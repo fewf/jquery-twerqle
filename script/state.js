@@ -20,6 +20,33 @@ function repeatElements(array, times) {
     return out;
 }
 
+function getShape(num) {
+    return num % state.numTypes;
+}
+
+function getColor(num) {
+    return Math.floor(num/6);
+}
+
+function growOne(x, y) {
+    // Takes coords of board, returns array of coords
+    // representing 3x3 grid around and including
+    // original coords.
+    var acc = [];
+    for (var i = -1; i < 2; i++) {
+        for (var j = -1; j < 2; j++) {
+            if (((x + i) >= 0) && ((y + j) >= 0)) {
+                acc.push([x + i, y + j]);
+            }
+        }
+    }
+    return acc;
+}
+
+function boardLookUp(coords) {
+    return state.board[coords[0]][coords[1]];
+}
+
 exports.initState = function(playerNames) {
     var state = {};
     state.numTypes = 6;       // 6 colors, 6 shapes
