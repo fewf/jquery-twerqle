@@ -49,6 +49,24 @@ function scrubTableData(data) {
   if (data === undefined) return "&nbsp;&nbsp; ";
   else return String(g.getColor(data)) + String(g.getShape(data));
 }
+
+g.placeTile(21,91,91)
+g.placeTile(22,92,91)
+g.placeTile(23,93,91)
+g.endTurn()
+drawTwerqle('t1',g.getView(5))
+g.placeTile(20,94,91)
+g.placeTile(2,94,92)
+g.endTurn()
+drawTwerqle('t2',g.getView(5))
+g.placeTile(15,91,92)
+g.placeTile(14,90,92)
+g.endTurn()
+drawTwerqle('t3', g.getView(5))
+g.placeTile(32,94,90)
+g.placeTile(35,93,90)
+g.endTurn()
+drawTwerqle('t4', g.getView(5))
     </script>
   </body>
 </html>

@@ -3,7 +3,6 @@ g = state.initState(["A", "B", "C", "D"])
 test( "init test", function () {
     ok (g.players.length === 4, "4 Players Init'ed");
     ok (g.players[0].tiles.length === 6, "Each has 6 tiles!");
-    ok (g.bag.length === ((g.numTypes * g.numTypes) * 3)  - (g.numTypes * 4), "Apropo tiles removed from bag");
 });
 
 // set tiles for testing
@@ -28,3 +27,5 @@ g.getStartIndex();
 test ( "first player test", function() {
     ok (g.getCurrentPlayer() === g.players[2], "Correct player first");
 });
+
+
