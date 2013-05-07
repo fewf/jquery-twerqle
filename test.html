@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.4.4/underscore-min.js" type="text/javascript"></script>
+    <meta charset="utf-8">
+    <title>SVG Test</title>
+    <link rel="stylesheet" href="http://code.jquery.com/qunit/qunit-1.11.0.css">
+    <style type="text/css">
+    table
+    {
+    border-collapse:collapse;
+    font-family: monospace;
+    }
+    table,th, td
+    {
+    border: 1px solid #555;
+    }
+    td {
+      padding: 2px;
+    }
+    </style>
+  </head>
+  <body>
+    <div id="qunit"></div>
+    <div id="qunit-fixture"></div>
+    <script src="http://code.jquery.com/qunit/qunit-1.11.0.js"></script>
+    <script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
+    <script type="text/javascript" src="bundle.js"></script>
+    <script type="text/javascript" src="script/tests.js"></script>
+    <script type="text/javascript">
+function drawTwerqle(id, view) {
+  $('body').append('<div id="' + id + '"></div>')
+  $('#' + id).append('<table></table>');
+  var table = $('#' + id).children();
+  var insert, data;
+  for(var i = 0; i < view[0].length; i++){
+    insert = "";
+    insert += '<tr>';
+      for (var j = 0; j < view[0].length; j++) {
+        data = scrubTableData(view[i][j])
+        insert += '<td>' + data + '</td>';
+      };
+    insert += '</tr>';
+    $(table).append(insert);
+  };
+}
+
+function scrubTableData(data) {
+  if (data === undefined) return "&nbsp;&nbsp; ";
+  else return String(g.getColor(data)) + String(g.getShape(data));
+}
+    </script>
+  </body>
+</html>
