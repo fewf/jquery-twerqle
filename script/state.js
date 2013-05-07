@@ -330,12 +330,14 @@ exports.initState = function(playerNames) {
                 player.tiles.push(this.board[player.turnHistory[i][0]][player.turnHistory[i][1]]);
                 this.board[player.turnHistory[i][0]][player.turnHistory[i][1]] = undefined;
             };
+            player.turnHistory = [];
             return false; 
         } 
         
         player.score += score;
         player.tiles = player.tiles.concat(_.take(this.bag, player.turnHistory.length));
         this.bag = _.drop(this.bag, player.turnHistory.length);
+        player.turnHistory = [];
         this.turn++;
     }
 
