@@ -201,7 +201,7 @@ exports.initState = function(playerNames) {
             xLine.unshift(this.board[x][y-i]);
         };
         for (var i = 1; this.board[x][y+i] !== undefined; i++) {
-            xLine.push(this.board[x][y+1]);
+            xLine.push(this.board[x][y+i]);
         };
         return xLine;
     }
