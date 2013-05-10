@@ -21,87 +21,6 @@ function repeatElements(array, times) {
     return out;
 }
 
-exports.getShape = function(num, numTypes) {
-    return num % numTypes;
-}
-
-exports.getColor = function(num, numTypes) {
-    return Math.floor(num/numTypes);
-}
-
-exports.growOne = function(x, y) {
-    // Takes coords of board, returns array of coords
-    // representing 3x3 grid around and including
-    // original coords.
-    var acc = [];
-    for (var i = -1; i < 2; i++) {
-        for (var j = -1; j < 2; j++) {
-            if (((x + i) >= 0) && ((y + j) >= 0)) {
-                acc.push([x + i, y + j]);
-            }
-        }
-    }
-    return acc;
-}
-
-exports.boardLookUp = function(x, y, board) {
-    return board[x][y];
-}
-
-exports.getLines = function(x, y, board) {
-    var nextSpace = -1;
-    var xLine = [];
-    var yLine = [];
-    for (var i = 0; board[x-i][y] !== undefined; i++) {
-        xLine.unshift(board[x-i][y]);
-    };
-    for (var i = 1; board[x+i][y] !== undefined; i++) {
-        xLine.push(board[x+i][y]);
-    };
-    for (var i = 0; board[x][y-1] !== undefined; i++) {
-        yLine.unshift(board[x][y-i]);
-    };
-    for (var i = 1; board[x][y+i] !== undefined; i++) {
-        yLine.push(board[x][y+1]);
-    };
-    return [xLine, yLine];
-}
-
-exports.lineIsValid = function(line, game) {
-    // not over numTypes
-    if (line.length > game.numTypes) { return false; } 
-
-    var allSameShape = true;
-    var allSameColor = true;
-
-    for (var i = line.length - 1,
-         shape = state.getShape(line[i], game.numTypes),
-         color = state.getColor(line[i], game.numTypes); i >= 0; i--) {
-        // check unique; short-circuit false if not
-        if (line.slice(0,i).indexOf(line[i]) !== -1) {
-            return false;
-        }
-        // check same shape/color
-        if (shape !== state.getShape(line[i], game.numTypes)) { allSameShape = false; }
-        if (color !== state.getColor(line[i], game.numTypes)) { allSameColor = false; }
-    };
-
-    return (allSameShape || allSameColor);
-}
-
-exports.placeTile = function(tile, x, y, game) {
-    game.board[x][y] = tile;
-    newLines = state.getLines(x,y,game.board);
-    xIsValid = state.lineIsValid(newLines[0], game);
-    yIsValid = state.lineIsValid(newLines[1], game);
-    if (xIsValid && yIsValid) { 
-        return "cool"; 
-    } else {
-        game.board[x][y] = undefined;
-        return "no good";
-    }
-}
-
 exports.initState = function(playerNames) {
     var state = {};
     state.numTypes = 6;       // 6 colors, 6 shapes
@@ -184,30 +103,30 @@ exports.initState = function(playerNames) {
         return this.players[(this.turn + this.startIndex) % this.players.length]
     }
 
-    state.getYLine = function(x, y) {
-        var yLine = [];
-        for (var i = 0; this.board[x-i][y] !== undefined; i++) {
-            yLine.unshift(this.board[x-i][y]);
+    state.getColLine = function(row, col) {
+        var colLine = [];
+        for (var i = 0; this.board[row - i][col] !== undefined; i++) {
+            colLine.unshift(this.board[row-i][col]);
         };
-        for (var i = 1; this.board[x+i][y] !== undefined; i++) {
-            yLine.push(this.board[x+i][y]);
+        for (var i = 1; this.board[row + i][col] !== undefined; i++) {
+            colLine.push(this.board[row + i][col]);
         };
-        return yLine;        
+        return colLine;        
     }
 
-    state.getXLine = function(x, y) {
-        var xLine = [];
-        for (var i = 0; this.board[x][y-i] !== undefined; i++) {
-            xLine.unshift(this.board[x][y-i]);
+    state.getRowLine = function(row, col) {
+        var rowLine = [];
+        for (var i = 0; this.board[row][col - i] !== undefined; i++) {
+            rowLine.unshift(this.board[row][col-i]);
         };
-        for (var i = 1; this.board[x][y+i] !== undefined; i++) {
-            xLine.push(this.board[x][y+i]);
+        for (var i = 1; this.board[row][col + i] !== undefined; i++) {
+            rowLine.push(this.board[row][col + i]);
         };
-        return xLine;
+        return rowLine;
     }
 
-    state.getLines = function(x, y) {
-        return [this.getXLine(x, y), this.getYLine(x, y)];
+    state.getLines = function(row, col) {
+        return [this.getRowLine(row, col), this.getColLine(row, col)];
     }
 
     state.lineIsValid = function(line) {
@@ -235,49 +154,50 @@ exports.initState = function(playerNames) {
         return allSameShape || allSameColor;
     }
 
-    state.hasNeighbors = function(x,y) {
-        return  (this.board[x+1][y] !== undefined) ||
-                (this.board[x-1][y] !== undefined) ||
-                (this.board[x][y+1] !== undefined) ||
-                (this.board[x][y-1] !== undefined)
+    state.hasNeighbors = function(row, col) {
+        return  (this.board[row+1][col] !== undefined) ||
+                (this.board[row-1][col] !== undefined) ||
+                (this.board[row][col+1] !== undefined) ||
+                (this.board[row][col-1] !== undefined)
     }
 
-    state.placeTile = function(tile, x, y) {
+    state.placeTile = function(tile, row, col) {
         var currentPlayer = this.getCurrentPlayer();
         if (currentPlayer.tiles.indexOf(tile) === -1) {
             return false;
         }
 
         if (!this.firstMove) {
-            if (!this.hasNeighbors(x,y)) {
+            if (!this.hasNeighbors(row, col)) {
                 return false;
             }
         } else {
-            x = this.center;
-            y = this.center;
+            row = this.center;
+            col = this.center;
             this.firstMove = false;
         }
-        this.board[x][y] = tile;
+        this.board[row][col] = tile;
 
-        if (this.lineIsValid(this.getXLine(x, y)) 
-            && this.lineIsValid(this.getYLine(x, y))) {
+        if (this.lineIsValid(this.getRowLine(row, col)) 
+            && this.lineIsValid(this.getColLine(row, col))) {
             currentPlayer.tiles.splice(
                 currentPlayer.tiles.indexOf(tile), 1);
-            currentPlayer.turnHistory.push([x,y]);
+            currentPlayer.turnHistory.push([row, col]);
             return true; 
         } else {
-            this.board[x][y] = undefined;
+            this.board[row][col] = undefined;
             return false;
         }
     }
 
-    state.getYSlice = function(y,xMin,xMax) {
-        var ySlice = [];
-        for (var i = xMin; i <= xMax; i++) {
-            ySlice.push(this.board[i][y])
+    state.getColSlice = function(col,rowMin,rowMax) {
+        var colSlice = [];
+        for (var i = rowMin; i <= rowMax; i++) {
+            colSlice.push(this.board[i][col])
         };
-        return ySlice;
+        return colSlice;
     }
+    
     state.scoreTurn = function(turnHistory) {
         var score = 0;
         if (!turnHistory.length) return score;
@@ -285,34 +205,42 @@ exports.initState = function(playerNames) {
             var lines = this.getLines(turnHistory[0], turnHistory[1]);
             scores += lines[0].length > 1 ? lines[0].length : 0;
             scores += lines[1].length > 1 ? lines[1].length : 0;
+            scores += lines[0].length === this.numTypes ? this.numTypes : 0;
+            scores += lines[1].length === this.numTypes ? this.numTypes : 0;
             return score;
         }
-        var xMin, xMax, yMin, yMax;
+        var rowMin, rowMax, colMin, colMax;
 
         for (var i = turnHistory.length - 1; i >= 0; i--) {
-            xMin = (turnHistory[i][0] < (xMin || Infinity))  ? turnHistory[i][0] : xMin;
-            xMax = (turnHistory[i][0] > (xMax || -Infinity)) ? turnHistory[i][0] : xMax;
-            yMin = (turnHistory[i][1] < (yMin || Infinity))  ? turnHistory[i][1] : yMin;
-            yMax = (turnHistory[i][1] > (yMax || -Infinity)) ? turnHistory[i][1] : yMax;
+            rowMin = (turnHistory[i][0] < (rowMin || Infinity))  ? turnHistory[i][0] : rowMin;
+            rowMax = (turnHistory[i][0] > (rowMax || -Infinity)) ? turnHistory[i][0] : rowMax;
+            colMin = (turnHistory[i][1] < (colMin || Infinity))  ? turnHistory[i][1] : colMin;
+            colMax = (turnHistory[i][1] > (colMax || -Infinity)) ? turnHistory[i][1] : colMax;
         };
 
-        if (xMin === xMax) {
-            var xSlice = this.board[xMin].slice(yMin,yMax + 1);
+        if (rowMin === rowMax) {
+            var xSlice = this.board[rowMin].slice(colMin,colMax + 1);
             if (xSlice.indexOf(undefined) === -1) {
-                score += this.getXLine(xMin, yMin).length;
+                score += this.getRowLine(rowMin, colMin).length;
                 for (var i = 0; i < turnHistory.length; i++) {
-                    score += this.getYLine(turnHistory[i][0], turnHistory[i][1]).length > 1 ?
-                             this.getYLine(turnHistory[i][0], turnHistory[i][1]).length : 0;
+                    score += this.getColLine(turnHistory[i][0], turnHistory[i][1]).length > 1 ?
+                             this.getColLine(turnHistory[i][0], turnHistory[i][1]).length : 0;
+                    score += this.getColLine(turnHistory[i][0], turnHistory[i][1]).length === this.numTypes ?
+                             this.numTypes : 0;
                 };
             }
             return score;
-        } else if (yMin === yMax) {
-            var ySlice = this.getYSlice(yMin, xMin, xMax);
-            if (ySlice.indexOf(undefined) === -1) {
-                score += this.getYLine(xMin, yMin).length;
+        } else if (colMin === colMax) {
+            var colSlice = this.getColSlice(colMin, rowMin, rowMax);
+            if (colSlice.indexOf(undefined) === -1) {
+                score += this.getColLine(rowMin, colMin).length;
                 for (var i = 0; i < turnHistory.length; i++) {
-                    score += this.getXLine(turnHistory[i][0], turnHistory[i][1]).length > 1 ?
-                             this.getXLine(turnHistory[i][0], turnHistory[i][1]).length : 0;
+                    var row = turnHistory[i][0];
+                    var col = turnHistory[i][1];
+                    score += this.getRowLine(row, col).length > 1 ?
+                             this.getRowLine(row, col).length : 0;
+                    score += this.getRowLine(row, col).length === this.numTypes ?
+                             this.numTypes : 0;
                 };
             }
             return score;
@@ -320,6 +248,8 @@ exports.initState = function(playerNames) {
             return score;
         }
     }
+
+
 
     state.endTurn = function() {
         var player = this.getCurrentPlayer();
@@ -342,6 +272,7 @@ exports.initState = function(playerNames) {
     }
 
     state.getView = function(exCenter) {
+        if (typeof exCenter === "undefined") exCenter = viewSize;
         var view = [];
         for (var i = -exCenter; i <= exCenter; i++) {
             view.push(this.board[this.center + i].slice(this.center - exCenter,this.center + exCenter + 1));
