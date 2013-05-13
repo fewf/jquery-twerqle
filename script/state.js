@@ -1,6 +1,14 @@
 var _ = require('underscore');
 var qunit = require('qunit');
 
+exports.sum = function(nums) {
+    var sum = 0;
+    for (var i = nums.length - 1; i >= 0; i--) {
+        sum += nums[i]
+    };
+    return sum;
+}
+
 exports.maxDimension = function(numTypes, copies) {
     // Returns the maximum width or height of the grid
     // given that tiles come in `num_types` colors,
@@ -44,7 +52,6 @@ exports.initState = function(playerNames) {
             name: playerNames[i],
             score: 0,
             tiles: _.take(state.bag, state.tilesPerPlayer),
-            turnHistory: []
         });
 
         // remove the tiles the player took from the "bag"
@@ -55,7 +62,7 @@ exports.initState = function(playerNames) {
 
     state.players = players;
     state.turn = 0;
-    state.firstMove = true;
+    state.turnHistory = [];
 
     state.getShape = function(num) {
         return num % this.numTypes;
@@ -66,25 +73,23 @@ exports.initState = function(playerNames) {
     }
 
     state.getLongestLine = function(tiles) {
+        // takes list of tile values, returns longest line 
         var outer = this;
-        var shapeLines = [];
-        var colorLines = [];
-        tiles = _.uniq(tiles)  
+        var lines = [];
+        tiles = _.uniq(tiles);
+ 
         for (i=0; i < this.numTypes; i++) {
-            shapeLines.push(tiles.filter(function (x) {return outer.getShape(x) === i; }));
-            colorLines.push(tiles.filter(function (x) {return outer.getColor(x) === i; }));
+            lines.push(tiles.filter(
+                function (x) { return outer.getShape(x) === i; }));
+            lines.push(tiles.filter(
+                function (x) { return outer.getColor(x) === i; }));
         }
-        var shapeLinesLength = shapeLines.map(function (x) {return x.length;});
-        var colorLinesLength = colorLines.map(function (x) {return x.length;});
 
-        var maxShapes = Math.max.apply(Math, shapeLinesLength);
-        var maxColors = Math.max.apply(Math, colorLinesLength);
+        var linesLengths = lines.map(function (x) { return x.length; });
 
-        if (maxColors > maxShapes) {
-            return colorLines[colorLinesLength.indexOf(maxColors)];
-        } else {
-            return shapeLines[shapeLinesLength.indexOf(maxShapes)];
-        }
+        var maxLine = Math.max.apply(Math, linesLengths);
+
+        return lines[linesLengths.indexOf(maxLine)];
     }
 
     state.getStartIndex = function() {
@@ -130,154 +135,191 @@ exports.initState = function(playerNames) {
     }
 
     state.lineIsValid = function(line) {
+        var outer = this;
         // not over numTypes
-        if (line.length > this.numTypes) { return false; }
+        if (line.length > this.numTypes) return false;
+
+        // no duplicates
+        if (_.uniq(line).length !== line.length) return false;
 
         // all 1-length lines valid
-        if (line.length === 1) { return true; }
+        if (line.length === 1) return true;
 
-        var allSameShape = true;
-        var allSameColor = true;
+        var shapes = line.map(function(x) {return outer.getShape(x); });
+        var colors = line.map(function(x) {return outer.getColor(x); });
 
-        for (var i = line.length - 1,
-             shape = this.getShape(line[i]),
-             color = this.getColor(line[i]); i >= 0; i--) {
-            // check unique; short-circuit false if not
-            if (line.slice(0,i).indexOf(line[i]) !== -1) {
-                return false;
-            }
-            // check same shape/color
-            if (shape !== this.getShape(line[i])) { allSameShape = false; }
-            if (color !== this.getColor(line[i])) { allSameColor = false; }
-        };
-
-        return allSameShape || allSameColor;
+        return _.uniq(colors).length === 1 || _.uniq(shapes).length === 1;
     }
 
-    state.hasNeighbors = function(row, col) {
-        return  (this.board[row+1][col] !== undefined) ||
-                (this.board[row-1][col] !== undefined) ||
-                (this.board[row][col+1] !== undefined) ||
-                (this.board[row][col-1] !== undefined)
+    state.hasNeighbor = function(row, col) {
+        return  this.tileAt(row + 1, col) ||
+                this.tileAt(row - 1, col) ||
+                this.tileAt(row, col + 1) ||
+                this.tileAt(row, col - 1);
     }
 
-    state.placeTile = function(tile, row, col) {
-        var currentPlayer = this.getCurrentPlayer();
-        if (currentPlayer.tiles.indexOf(tile) === -1) {
+    state.tileAt = function(row,col) {
+        return this.board[row, col] !== undefined;
+    }
+
+    state.confirmTurnIsLine = function() {
+        if (this.turnHistory.length < 2) return true;
+
+        var rows = this.turnHistory.map(function(x) {return x[0]; })
+        var cols = this.turnHistory.map(function(x) {return x[1]; })
+
+        if (_.uniq(rows).length === 1) {
+            // is row line - check no gaps
+            var row = rows[0];
+            var minCol = Math.min.apply(Math, cols);
+            var maxCol = Math.max.apply(Math, cols);
+            var slice = this.board[row].slice(minCol, maxCol + 1);
+        } else if (_.uniq(cols).length === 1) {
+            // is col line - check no gaps
+            var col = cols[0];
+            var minRow = Math.min.apply(Math, rows);
+            var maxRow = Math.max.apply(Math, rows);
+            var slice = this.columnSlice(col, minRow, maxRow + 1);
+        } else {    
             return false;
         }
 
-        if (!this.firstMove) {
-            if (!this.hasNeighbors(row, col)) {
-                return false;
-            }
-        } else {
-            row = this.center;
-            col = this.center;
-            this.firstMove = false;
-        }
+        return slice.indexOf(undefined) === -1;
+    }
+
+    state.playerHasTile = function(tile) {
+        return this.getCurrentPlayer().tiles.indexOf(tile) !== -1;
+    }
+
+    state.updateState = function(tile, row, col) {
+        this.removeTileFromRack(tile);
         this.board[row][col] = tile;
-
-        if (this.lineIsValid(this.getRowLine(row, col)) 
-            && this.lineIsValid(this.getColLine(row, col))) {
-            currentPlayer.tiles.splice(
-                currentPlayer.tiles.indexOf(tile), 1);
-            currentPlayer.turnHistory.push([row, col]);
-            return true; 
-        } else {
-            this.board[row][col] = undefined;
-            return false;
-        }
+        this.turnHistory.push([row, col]);
     }
 
-    state.getColSlice = function(col,rowMin,rowMax) {
+    state.rewindState = function(tile, row, col) {
+        this.getCurrentPlayer().tiles.push(tile);
+        this.board[row][col] = undefined;
+        this.turnHistory.pop();
+    }
+
+    state.removeTileFromRack = function(tile) {
+        var player = this.getCurrentPlayer()
+        player.tiles.splice(player.tiles.indexOf(tile), 1);
+    }
+
+    state.columnSlice = function(col, minRow, maxRow) {
         var colSlice = [];
-        for (var i = rowMin; i <= rowMax; i++) {
+        for (var i = minRow; i < maxRow; i++) {
             colSlice.push(this.board[i][col])
         };
         return colSlice;
     }
     
-    state.scoreTurn = function(turnHistory) {
+    state.scoreLine = function(line) {
+        if (line.length === 1) return 0;
+        if (line.length === this.numTypes) return this.numTypes * 2;
+        return line.length;
+    }
+
+    state.scoreTurn = function() {
+        var outer = this;
+        var th = this.turnHistory;
         var score = 0;
-        if (!turnHistory.length) return score;
-        if (turnHistory.length === 1) {
-            var lines = this.getLines(turnHistory[0], turnHistory[1]);
-            scores += lines[0].length > 1 ? lines[0].length : 0;
-            scores += lines[1].length > 1 ? lines[1].length : 0;
-            scores += lines[0].length === this.numTypes ? this.numTypes : 0;
-            scores += lines[1].length === this.numTypes ? this.numTypes : 0;
-            return score;
-        }
-        var rowMin, rowMax, colMin, colMax;
 
-        for (var i = turnHistory.length - 1; i >= 0; i--) {
-            rowMin = (turnHistory[i][0] < (rowMin || Infinity))  ? turnHistory[i][0] : rowMin;
-            rowMax = (turnHistory[i][0] > (rowMax || -Infinity)) ? turnHistory[i][0] : rowMax;
-            colMin = (turnHistory[i][1] < (colMin || Infinity))  ? turnHistory[i][1] : colMin;
-            colMax = (turnHistory[i][1] > (colMax || -Infinity)) ? turnHistory[i][1] : colMax;
-        };
+        if (!th.length) return score;
 
-        if (rowMin === rowMax) {
-            var xSlice = this.board[rowMin].slice(colMin,colMax + 1);
-            if (xSlice.indexOf(undefined) === -1) {
-                score += this.getRowLine(rowMin, colMin).length;
-                for (var i = 0; i < turnHistory.length; i++) {
-                    score += this.getColLine(turnHistory[i][0], turnHistory[i][1]).length > 1 ?
-                             this.getColLine(turnHistory[i][0], turnHistory[i][1]).length : 0;
-                    score += this.getColLine(turnHistory[i][0], turnHistory[i][1]).length === this.numTypes ?
-                             this.numTypes : 0;
-                };
-            }
-            return score;
-        } else if (colMin === colMax) {
-            var colSlice = this.getColSlice(colMin, rowMin, rowMax);
-            if (colSlice.indexOf(undefined) === -1) {
-                score += this.getColLine(rowMin, colMin).length;
-                for (var i = 0; i < turnHistory.length; i++) {
-                    var row = turnHistory[i][0];
-                    var col = turnHistory[i][1];
-                    score += this.getRowLine(row, col).length > 1 ?
-                             this.getRowLine(row, col).length : 0;
-                    score += this.getRowLine(row, col).length === this.numTypes ?
-                             this.numTypes : 0;
-                };
-            }
-            return score;
+        if (th.length === 1) {
+            var lines = this.getLines(th[0][0], th[0][1]);
+            score += this.scoreLine(lines[0]);
+            score += this.scoreLine(lines[1]);
         } else {
-            return score;
+            if (th[0][0] === th[1][0]) {
+                var mainLine = this.getRowLine(th[0][0], th[0][1])
+                score += this.scoreLine(mainLine);
+                var subscores = th.map(function (x) {
+                        return outer.scoreLine(outer.getColLine(x[0], x[1]));
+                    });
+                score += exports.sum(subscores);
+            } else {
+                var mainLine = this.getColLine(th[0][0], th[0][1])
+                score += this.scoreLine(mainLine);
+                var subscores = th.map(function (x) {
+                        return outer.scoreLine(outer.getRowLine(x[0], x[1]))
+                    });
+                score += exports.sum(subscores);
+            }
+        }
+
+        return score;
+    }
+
+    state.resetTurn = function () {
+        var th = this.turnHistory;
+        var player = this.getCurrentPlayer();
+        for (var i = th.length - 1; i >= 0; i--) {
+            player.tiles.push(this.board[th[i][0]][th[i][1]]);
+            this.board[th[i][0]][th[i][1]] = undefined;
+        };
+        this.turnHistory = [];
+    }
+
+    state.replenishTiles = function(player, howMany) {
+        howMany = (this.bag.length < howMany) ? this.bag.length : howMany;
+        player.tiles = player.tiles.concat(_.take(this.bag, howMany));
+        this.bag = _.drop(this.bag, howMany);
+    } 
+
+    state.placeTile = function(tile, row, col) {
+
+        if (!this.turnHistory.length && !this.turn) {
+            // Special handling for first tile placed in game
+            row = this.center;
+            col = this.center;
+        } else if (!this.hasNeighbor(row, col)) {
+            // Normal handling.
+            return false;
+        }
+
+        // Tile placement validation
+        if (!this.tileAt(row, col) ||
+            !this.playerHasTile(tile)) return false;
+        
+        // Update state
+        this.updateState(tile, row, col);
+
+        // Line validation
+        if (this.confirmTurnIsLine()) {
+            // Newly made ines are either all same shape or color
+            var newLines = this.getLines(row, col);
+            if (this.lineIsValid(newLines[0]) && this.lineIsValid(newLines[1])) {
+                // Success!
+                return true; 
+            } else {
+                // Reverse tile placement
+                this.rewindState(tile, row, col);
+                return false;
+            }
+        } else {
+            // Reverse tile placement
+            this.rewindState(tile, row, col);
+            return false;
         }
     }
 
-
-
     state.endTurn = function() {
-        var player = this.getCurrentPlayer();
-        var score = this.scoreTurn(player.turnHistory)
+        if (!this.turnHistory || !this.turnHistory.length) return false;
 
-        if (!score) {
-            for (var i = player.turnHistory.length - 1; i >= 0; i--) {
-                player.tiles.push(this.board[player.turnHistory[i][0]][player.turnHistory[i][1]]);
-                this.board[player.turnHistory[i][0]][player.turnHistory[i][1]] = undefined;
-            };
-            player.turnHistory = [];
-            return false; 
-        } 
-        
-        player.score += score;
-        player.tiles = player.tiles.concat(_.take(this.bag, player.turnHistory.length));
-        this.bag = _.drop(this.bag, player.turnHistory.length);
-        player.turnHistory = [];
+        var player = this.getCurrentPlayer();
+        player.score += this.scoreTurn();
+        this.replenishTiles(player, this.turnHistory.length);
+        if (!player.tiles.length) {
+            player.score += this.numTypes;
+            console.log("GAME OVER!");
+        }
+        this.turnHistory = [];
         this.turn++;
     }
 
-    state.getView = function(exCenter) {
-        if (typeof exCenter === "undefined") exCenter = viewSize;
-        var view = [];
-        for (var i = -exCenter; i <= exCenter; i++) {
-            view.push(this.board[this.center + i].slice(this.center - exCenter,this.center + exCenter + 1));
-        };
-        return view;
-    }
     return state;
-}
+} 

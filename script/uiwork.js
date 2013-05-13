@@ -19,44 +19,15 @@ $("body").delegate("td.grid", "click", function() {
 
 g = state.initState(["A", "B", "C", "D"])
 
-test( "init test", function () {
-    ok (g.players.length === 4, "4 Players Init'ed");
-    ok (g.players[0].tiles.length === 6, "Each has 6 tiles!");
-});
-
-// set tiles for testing
-
-g.players[0].tiles = [30, 25, 10, 15, 14, 15];
-g.players[1].tiles = [35, 24, 2, 28, 32, 15];
-g.players[2].tiles = [21, 22, 23, 6, 12, 14];
-g.players[3].tiles = [27, 17, 13, 7, 2, 20];
-
-
-g.bag = [18, 28, 29, 32, 29, 14, 3, 31, 22, 4, 
-        17, 20, 18, 26, 8, 3, 13, 19, 27, 0, 5, 
-        17, 27, 4, 34, 5, 22, 21, 23, 30, 35, 
-        25, 19, 10, 11, 23, 7, 9, 21, 1, 31, 6, 
-        20, 33, 8, 24, 33, 19, 6, 31, 7, 0, 8, 
-        25, 26, 0, 26, 13, 30, 10, 18, 11, 24, 
-        1, 33, 16, 34, 3, 12, 16, 16, 35, 29, 
-        4, 34, 28, 11, 5, 9, 2, 9, 1, 12, 32];
-
-g.getStartIndex();
-
-test ( "first player test", function() {
-    ok (g.getCurrentPlayer() === g.players[2], "Correct player first");
-});
-
-var viewSize = 8;
-var drawCount = 1
+var viewSize = 90;
 
 function drawTwerqle() {
-  var view = getView();
+  // var view = getView();
   var toAppend, insert, data;;
-  $('body').append('<div class="twerqle" id="t' + drawCount + '"></div>');
-
-  $('#t' + drawCount).append('<table class="board"></table>');
-  var table = $('#t' + drawCount + ' table.board');
+  $('#twerqle').replaceWith('<div id="twerqle"></div>');
+  view = g.board;
+  $('#twerqle').append('<table class="board"></table>');
+  var table = $('#twerqle table.board');
   for(var i = 0; i < view[0].length; i++){
     insert = '';
     insert += '<tr>';
@@ -69,7 +40,7 @@ function drawTwerqle() {
   };
 
   for (var o = 0; o < g.players.length; o++) {
-    toAppend = '';
+    toAppend = '<div id="players">';
     toAppend += '<div class="player">';
     toAppend += '<p>' + g.players[o].name +'</p>';
     toAppend += '<p>' + g.players[o].score +'</p>';
@@ -77,29 +48,22 @@ function drawTwerqle() {
     for (var j = 0; j < g.players[o].tiles.length; j++) {
       toAppend += '<td class="rack" title="' + g.players[o].tiles[j] + '">' + getColoredShape(g.getShape(g.players[o].tiles[j]), g.getColor(g.players[o].tiles[j]), g.players[o].tiles[j]) + '</td>';
     };
-    if (g.getCurrentPlayer() === g.players[o]) {
-      toAppend += '<td><input type="button" onClick="g.endTurn();drawTwerqle();" value="end turn" /><input type="button" onClick="g.resetTurn();drawTwerqle();" value="reset turn" /></td>';
-    }
     toAppend += '</tr></table>';
-    toAppend += '</div>';
-    $('#t' + drawCount).append(toAppend);
+    toAppend += '</div></div>';
+    $('#twerqle').append(toAppend);
   };
-  drawCount++;
-  // scroll to bottom
-  var x = 0;
-  var y = document.height;
-  window.scroll(x,y);
+  $("#twerqle").draggable();
 }
 
 
-function getView (exCenter) {
-    if (typeof exCenter === "undefined") exCenter = viewSize;
-    var view = [];
-    for (var i = -exCenter; i <= exCenter; i++) {
-        view.push(g.board[g.center + i].slice(g.center - exCenter, g.center + exCenter + 1));
-    };
-    return view;
-}
+// function getView (exCenter) {
+//     if (typeof exCenter === "undefined") exCenter = viewSize;
+//     var view = [];
+//     for (var i = -exCenter; i <= exCenter; i++) {
+//         view.push(g.board[g.center + i].slice(g.center - exCenter, g.center + exCenter + 1));
+//     };
+//     return view;
+// }
 
 var shapes = [
   function(color, tile) { return '<svg title="'+tile+'" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 32 32" class="tile c' + color + '"><path d="m 32.00147,24.581288 -15.301765,0 -15.3017653,0 7.6508826,-13.251717 7.6508827,-13.2517178 7.650883,13.2517178 z" transform="translate(-0.44651618,4.5544652)" /></svg>';},
@@ -120,24 +84,4 @@ function scrubTableData(data) {
   return ret;
 }
 
-
-
-drawTwerqle();
-g.placeTile(21,91,91);
-g.placeTile(22,92,91);
-g.placeTile(23,93,91);
-g.endTurn();
-drawTwerqle();
-g.placeTile(20,94,91);
-g.placeTile(2,94,92);
-g.endTurn();
-drawTwerqle();
-g.placeTile(15,91,92);
-g.placeTile(14,90,92);
-g.endTurn();
-drawTwerqle();
-g.placeTile(32,94,90);
-g.placeTile(35,93,90);
-g.endTurn();
-drawTwerqle();
 
