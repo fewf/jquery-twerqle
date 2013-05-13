@@ -11,6 +11,7 @@
     }
     table.board
     {
+    cursor: move;
     border-collapse:collapse;
     font-family: monospace;
     margin: 1em 0;
@@ -18,15 +19,16 @@
     }
     table,th, td
     {
-    border: 1px solid #555;
+    z-index: 1;
+    border: 1px solid #ddd;
     }
     td {
-      width: 20px;
-      height: 20px;
+      min-width: 32px;
+      height: 32px;
     }
     svg.tile {
-      width: 20px;
-      height: 20px;
+      width: 32px;
+      height: 32px;
       background-color: #282828;
     }
     svg.tile.c0 path, svg.tile.c0 rect { fill: #d1f2a5; }

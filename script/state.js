@@ -217,6 +217,9 @@ exports.initState = function(playerNames) {
     }
     
     state.scoreLine = function(line) {
+        // Special handling for case where first move is just one tile:
+        if (!this.turn && this.turnHistory.length === 1) return 1;
+        // Normal handling:
         if (line.length === 1) return 0;
         if (line.length === this.numTypes) return this.numTypes * 2;
         return line.length;
@@ -235,6 +238,7 @@ exports.initState = function(playerNames) {
             score += this.scoreLine(lines[1]);
         } else {
             if (th[0][0] === th[1][0]) {
+                // mainline is row
                 var mainLine = this.getRowLine(th[0][0], th[0][1])
                 score += this.scoreLine(mainLine);
                 var subscores = th.map(function (x) {
@@ -242,6 +246,7 @@ exports.initState = function(playerNames) {
                     });
                 score += exports.sum(subscores);
             } else {
+                // mainline is col
                 var mainLine = this.getColLine(th[0][0], th[0][1])
                 score += this.scoreLine(mainLine);
                 var subscores = th.map(function (x) {

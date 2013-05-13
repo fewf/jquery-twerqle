@@ -1,16 +1,30 @@
 var clickedTile;
 
-$("body").delegate("td.rack", "click", function () {
+$("body").delegate("td.rack", "mousedown", function () {
   clickedTile = Number($(this).attr("title"));
   console.log(clickedTile);
 });
 
-$("body").delegate("td.grid", "click", function() { 
+// $("body").delegate("td.grid", "click", function() { 
+//   if (typeof clickedTile !== "undefined") {
+//     var row = Number($(this).attr("row"));
+//     var col = Number($(this).attr("col"));
+//     if (g.placeTile(clickedTile, row, col)) {
+//       drawTwerqle();
+//       clickedTile = undefined;
+//     } else {
+//       clickedTile = undefined;
+//     }
+//   }
+// });
+
+$("body").delegate("td.grid", "mouseup", function() { 
   if (typeof clickedTile !== "undefined") {
     var row = Number($(this).attr("row"));
     var col = Number($(this).attr("col"));
     if (g.placeTile(clickedTile, row, col)) {
       drawTwerqle();
+      clickedTile = undefined;
     } else {
       clickedTile = undefined;
     }
@@ -19,7 +33,7 @@ $("body").delegate("td.grid", "click", function() {
 
 g = state.initState(["A", "B", "C", "D"])
 
-var viewSize = 90;
+var viewSize = 91;
 
 function drawTwerqle() {
   // var view = getView();
@@ -38,9 +52,8 @@ function drawTwerqle() {
     insert += '</tr>';
     $(table).append(insert);
   };
-
+  toAppend = '<div id="players">';
   for (var o = 0; o < g.players.length; o++) {
-    toAppend = '<div id="players">';
     toAppend += '<div class="player">';
     toAppend += '<p>' + g.players[o].name +'</p>';
     toAppend += '<p>' + g.players[o].score +'</p>';
@@ -48,11 +61,16 @@ function drawTwerqle() {
     for (var j = 0; j < g.players[o].tiles.length; j++) {
       toAppend += '<td class="rack" title="' + g.players[o].tiles[j] + '">' + getColoredShape(g.getShape(g.players[o].tiles[j]), g.getColor(g.players[o].tiles[j]), g.players[o].tiles[j]) + '</td>';
     };
+    if (g.getCurrentPlayer() === g.players[o]) {
+      toAppend += '<td><input type="button" onClick="g.endTurn();drawTwerqle();" value="end turn" /><input type="button" onClick="g.resetTurn();drawTwerqle();" value="reset turn" /></td>';
+    }
     toAppend += '</tr></table>';
-    toAppend += '</div></div>';
-    $('#twerqle').append(toAppend);
+    toAppend += '</div>';
   };
-  $("#twerqle").draggable();
+  toAppend += '</div>';
+  $('#twerqle').append(toAppend);
+  $('#twerqle').draggable();
+  $('td.rack svg.tile').draggable();
 }
 
 
@@ -85,3 +103,4 @@ function scrubTableData(data) {
 }
 
 
+drawTwerqle();
