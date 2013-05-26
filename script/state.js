@@ -9,6 +9,18 @@ exports.sum = function(nums) {
     return sum;
 }
 
+exports.equalCoords = function(coord1, coord2) {
+    return coord1[0] === coord2[0] && coord1[1] === coord2[1];
+}
+
+exports.coordsIn = function(needle, haystack) {
+    for (var i = haystack.length - 1; i >= 0; i--) {
+        if (exports.equalCoords(needle, haystack[i])) return true;
+            //// FINISH ME!
+    };
+    return false;
+}
+
 exports.maxDimension = function(numTypes, copies) {
     // Returns the maximum width or height of the grid
     // given that tiles come in `num_types` colors,
@@ -29,11 +41,11 @@ function repeatElements(array, times) {
     return out;
 }
 
-exports.initState = function(playerNames) {
+exports.initState = function(playerNames, numTypes, numCopies) {
     var state = {};
-    state.numTypes = 6;       // 6 colors, 6 shapes
-    state.copies = 3;         // 3 copies of each color+shape combo
-    state.tilesPerPlayer = 6; // players hold 6 tiles at a time
+    state.numTypes = numTypes;       // 6 colors, 6 shapes
+    state.copies = numCopies;         // 3 copies of each color+shape combo
+    state.tilesPerPlayer = numTypes; // players hold 6 tiles at a time
     var boardSize = exports.maxDimension(state.numTypes, state.copies)*2 - 1;
     state.board = new Array(boardSize);
     for (var i = 0; i < boardSize; i++)
@@ -42,7 +54,7 @@ exports.initState = function(playerNames) {
 
     state.bag = _.shuffle(repeatElements(_.range(0,
                                             state.numTypes*state.numTypes),
-                                         3));
+                                         state.copies));
 
     var players = [];
     for (var i = 0; i < playerNames.length; i++) {
@@ -58,11 +70,11 @@ exports.initState = function(playerNames) {
         state.bag = _.drop(state.bag, state.tilesPerPlayer);
     }
 
-
-
     state.players = players;
     state.turn = 0;
     state.turnHistory = [];
+    // state.occupiedCoords = [];
+    state.playable = [ [state.center, state.center] ];
 
     state.getShape = function(num) {
         return num % this.numTypes;
@@ -109,6 +121,7 @@ exports.initState = function(playerNames) {
     }
 
     state.getColLine = function(row, col) {
+        if (this.board[row][col] === undefined) return [];
         var colLine = [];
         for (var i = 0; this.board[row - i][col] !== undefined; i++) {
             colLine.unshift(this.board[row-i][col]);
@@ -120,6 +133,7 @@ exports.initState = function(playerNames) {
     }
 
     state.getRowLine = function(row, col) {
+        if (this.board[row][col] === undefined) return [];
         var rowLine = [];
         for (var i = 0; this.board[row][col - i] !== undefined; i++) {
             rowLine.unshift(this.board[row][col-i]);
@@ -151,15 +165,17 @@ exports.initState = function(playerNames) {
         return _.uniq(colors).length === 1 || _.uniq(shapes).length === 1;
     }
 
+
+
     state.hasNeighbor = function(row, col) {
-        return  this.tileAt(row + 1, col) ||
-                this.tileAt(row - 1, col) ||
-                this.tileAt(row, col + 1) ||
-                this.tileAt(row, col - 1);
+        var neighbors = this.getCoordNeighbors(row, col);
+        for (var i = neighbors.length - 1; i >= 0; i--) {
+            if (this.tileAt(neighbors[i][0], neighbors[i][1])) return true;
+        };
     }
 
     state.tileAt = function(row,col) {
-        return this.board[row, col] !== undefined;
+        return this.board[row][col] !== undefined;
     }
 
     state.confirmTurnIsLine = function() {
@@ -186,7 +202,7 @@ exports.initState = function(playerNames) {
 
         return slice.indexOf(undefined) === -1;
     }
-
+    
     state.playerHasTile = function(tile) {
         return this.getCurrentPlayer().tiles.indexOf(tile) !== -1;
     }
@@ -195,12 +211,16 @@ exports.initState = function(playerNames) {
         this.removeTileFromRack(tile);
         this.board[row][col] = tile;
         this.turnHistory.push([row, col]);
+        // this.occupiedCoords.push([row, col]);
+        this.updatePlayable(row, col);
     }
 
     state.rewindState = function(tile, row, col) {
         this.getCurrentPlayer().tiles.push(tile);
         this.board[row][col] = undefined;
         this.turnHistory.pop();
+        // this.occupiedCoords.pop();
+        this.playable = this.getAllPlayable();
     }
 
     state.removeTileFromRack = function(tile) {
@@ -265,11 +285,14 @@ exports.initState = function(playerNames) {
         for (var i = th.length - 1; i >= 0; i--) {
             player.tiles.push(this.board[th[i][0]][th[i][1]]);
             this.board[th[i][0]][th[i][1]] = undefined;
+            // this.occupiedCoords.pop();
         };
         this.turnHistory = [];
+        this.playable = this.getAllPlayable();
     }
 
-    state.replenishTiles = function(player, howMany) {
+    state.replenishTiles = function(howMany) {
+        var player = this.getCurrentPlayer();
         howMany = (this.bag.length < howMany) ? this.bag.length : howMany;
         player.tiles = player.tiles.concat(_.take(this.bag, howMany));
         this.bag = _.drop(this.bag, howMany);
@@ -277,7 +300,7 @@ exports.initState = function(playerNames) {
 
     state.placeTile = function(tile, row, col) {
 
-        if (!this.turnHistory.length && !this.turn) {
+        if (this.boardIsEmpty()) {
             // Special handling for first tile placed in game
             row = this.center;
             col = this.center;
@@ -287,7 +310,7 @@ exports.initState = function(playerNames) {
         }
 
         // Tile placement validation
-        if (!this.tileAt(row, col) ||
+        if (this.tileAt(row, col) ||
             !this.playerHasTile(tile)) return false;
         
         // Update state
@@ -313,17 +336,144 @@ exports.initState = function(playerNames) {
     }
 
     state.endTurn = function() {
-        if (!this.turnHistory || !this.turnHistory.length) return false;
+        if (!this.turnHistory.length) return false;
 
         var player = this.getCurrentPlayer();
         player.score += this.scoreTurn();
-        this.replenishTiles(player, this.turnHistory.length);
+        this.replenishTiles(this.turnHistory.length);
         if (!player.tiles.length) {
             player.score += this.numTypes;
             console.log("GAME OVER!");
         }
+        // this.occupiedCoords = this.occupiedCoords.concat(this.turnHistory);
         this.turnHistory = [];
         this.turn++;
+    }
+
+    state.boardIsEmpty = function() {
+        return !this.turn && !this.turnHistory.length
+    }
+
+    state.updatePlayable = function(row, col) {
+        if (this.boardIsEmpty()) {
+            this.playable = [ [g.center, g.center] ];
+        } else {
+            this.playable = this.playable.filter( function (x) { 
+                    return !exports.equalCoords(x, [row, col]);
+                })
+            // var coordIndex = this.playable.indexOf([row, col]);
+            // this.playable.splice(coordIndex, 1);
+            var playableNeighbors = this.getPlayableNeighbors(row, col);
+            this.playable = this.playable.concat(playableNeighbors);
+        }
+    }
+
+    state.coordsArePlayable = function(row, col) {
+        for (var i = this.playable.length - 1; i >= 0; i--) {
+            if (exports.equalCoords(this.playable[i], [row, col])) {
+                return true;
+            }
+        };
+        return false;
+    }
+
+    state.getCoordNeighbors = function(row, col) {
+        var boardSize = exports.maxDimension(this.numTypes, this.copies)*2 - 1;
+        var neighbors =     [
+                                [row + 1, col], [row - 1, col], 
+                                [row, col + 1], [row, col - 1]
+                            ];
+        return neighbors.filter( function(x) { 
+                return x[0] > 0 && x[0] < boardSize &&
+                            x[1] > 0 && x[1] < boardSize;
+            ;})
+    }
+
+    state.getPlayableNeighbors = function(row, col) {
+        var playableNeighbors = [];
+        var outer = this;
+        var neighbors = this.getCoordNeighbors(row, col);
+        for (var i = neighbors.length - 1; i >= 0; i--) {
+            if (!this.tileAt(neighbors[i][0], neighbors[i][1])) {
+                playableNeighbors.push(neighbors[i]);
+            }
+        };
+        return playableNeighbors;
+    }
+
+    state.getAllPlayable = function() {
+        var checkCoords = [];
+        var playableNeighbors = [];
+        var outer = this;
+        function recurse(coords) {
+            if (exports.coordsIn(coords, checkCoords)) {
+                return [];
+            } else {
+                checkCoords.push(coords);
+            }
+            var neighbors = outer.getCoordNeighbors(coords[0], coords[1]);
+            for (var i = neighbors.length - 1; i >= 0; i--) {
+                if (!outer.tileAt(neighbors[i][0], neighbors[i][1])) {
+                    playableNeighbors.push(neighbors[i]);
+                } else {
+                    playableNeighbors.concat(recurse(neighbors[i]));
+                }
+            };
+        }
+        
+        recurse([this.center,this.center]);
+
+        return playableNeighbors;
+    }
+
+    state.exchangeTiles = function(tiles) {
+        if (!this.turnHistory.length) return false;
+        for (var i = tiles.length - 1; i >= 0; i--) {
+            if (!this.playerHasTile(tiles[i])) return false;
+        };
+        this.replenishTiles(tiles.length);
+        this.returnTiles(tiles);
+        this.turn++;
+    }
+
+    state.returnTiles = function(tiles) {
+        if (!tiles.length || tiles.length > this.bag.length) return false;
+        for (var i = tiles.length - 1; i >= 0; i--) {
+            this.removeTileFromRack(tiles[i]);
+            g.bag.push(tiles[i]);
+        };
+        g.bag = _.shuffle(g.bag);
+    }
+
+    state.coordsTwerqlable = function(row, col) {
+        // FINISH ME!
+        var opp, oppTile, thisTile, check;
+        var neighbors = this.getCoordNeighbors(row, col);
+        var lines = [];
+        lines.push(this.getColLine(neighbors[0][0], neighbors[0][1]));
+        lines.push(this.getColLine(neighbors[1][0], neighbors[1][1]));
+        lines.push(this.getRowLine(neighbors[2][0], neighbors[2][1]));
+        lines.push(this.getRowLine(neighbors[3][0], neighbors[3][1]));
+        function findOpp (index) {
+            if (index % 2) return index - 1
+            else return index + 1
+        }
+        for (var i = lines.length - 1; i >= 0; i--) {
+            if (lines[i].length === this.numTypes) return false;
+            opp = findOpp(i);
+            if (this.tileAt(neighbors[opp][0], neighbors[opp][1])) {
+                oppTile = this.board[neighbors[opp][0]][neighbors[opp][1]];
+                check = lines[i].indexOf(oppTile);
+                if (check !== -1) return false;
+                thisTile = this.board[neighbors[i][0]][neighbors[i][1]];
+                if (this.getShape(thisTile) !== this.getShape(oppTile) &&
+                    this.getColor(thisTile) !== this.getColor(oppTile)) {
+                    return false;
+                }
+            }
+        };
+
+        return true;
     }
 
     return state;

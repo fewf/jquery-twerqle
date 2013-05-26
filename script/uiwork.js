@@ -1,9 +1,12 @@
-var clickedTile;
+var heldTile;
+var validDrop = false;
 
-$("body").delegate("td.rack", "mousedown", function () {
-  clickedTile = Number($(this).attr("title"));
-  console.log(clickedTile);
-});
+
+// $("body").delegate("td.rack", "mousedown", function () {
+//   clickedTileNum = Number($(this).attr("title"));
+//   clickedTile = $(this).children();
+//   console.log(clickedTile);
+// });
 
 // $("body").delegate("td.grid", "click", function() { 
 //   if (typeof clickedTile !== "undefined") {
@@ -18,36 +21,148 @@ $("body").delegate("td.rack", "mousedown", function () {
 //   }
 // });
 
-$("body").delegate("td.grid", "mouseup", function() { 
-  if (typeof clickedTile !== "undefined") {
-    var row = Number($(this).attr("row"));
-    var col = Number($(this).attr("col"));
-    if (g.placeTile(clickedTile, row, col)) {
-      drawTwerqle();
-      clickedTile = undefined;
-    } else {
-      clickedTile = undefined;
-    }
-  }
-});
+// $("body").delegate("td.grid", "mouseup", function() { 
+//   if (typeof clickedTileNum !== "undefined") {
+//     var row = Number($(this).attr("row"));
+//     var col = Number($(this).attr("col"));
+//     if (g.placeTile(clickedTileNum, row, col)) {
+//       updateTwerqle(clickedTile, row, col);
+//       clickedTileNum = undefined;
+//     } else {
+//       clickedTileNum = undefined;
+//     }
+//   }
+// });
 
 g = state.initState(["A", "B", "C", "D"])
 
 var viewSize = 91;
 
+function getCellByRowCol(row, col) {
+  return $('td.grid[row="'+row+'"][col="'+col+'"]');
+}
+
+function resetTwerqle(turnHistory) {
+  for (var i = g.turnHistory.length - 1; i >= 0; i--) {
+    row = g.turnHistory[i][0];
+    col = g.turnHistory[i][1];
+    getCellByRowCol(row, col).html("");
+  };
+  var row, col;
+  g.resetTurn();
+  updatePlayable();
+  updatePlayerBoard();
+}
+
+function updateTwerqle(tile, tileNum, snappedTo) {
+  $(snappedTo).html(scrubTableData(tileNum));
+  $(tile).remove();
+  updatePlayable();
+}
+
+function updatePlayable() {
+  $('.playable').removeClass('playable');
+  for (var i = g.playable.length - 1; i >= 0; i--) {
+    getCellByRowCol(g.playable[i][0], g.playable[i][1]).addClass('playable');
+  };
+  $( "td.playable" ).droppable({
+    // accept: "svg.tile",
+    // activeClass: "ui-state-hover",
+    // hoverClass: "ui-state-active",
+    hoverClass: "highlight",
+    drop: function( event, ui ) {
+
+      var row = Number($(this).attr("row"));
+      var col = Number($(this).attr("col"));
+      var heldTileNum = Number($(heldTile).attr("title"));
+      console.log(heldTileNum + " goes on " + $(this).attr("title"));
+      if (g.placeTile(heldTileNum, row, col)) {
+          updateTwerqle(heldTile, heldTileNum, this);
+          validDrop = true;
+        } else {
+          validDrop = false;
+        }
+    }
+  });
+}
+
+function updatePlayerBoard() {
+  toAppend = '<div id="players">';
+  for (var o = 0; o < g.players.length; o++) {
+    toAppend += '<div class="player">';
+    toAppend += '<p>' + g.players[o].name +'</p>';
+    toAppend += '<p>' + g.players[o].score +'</p>';
+    if (g.getCurrentPlayer() === g.players[o]) {
+      toAppend += '<table class="rack"><tr>';
+      for (var j = 0; j < g.players[o].tiles.length; j++) {
+        toAppend += '<td class="rack" title="' + g.players[o].tiles[j] + '">' + getColoredShape(g.players[o].tiles[j]) + '</td>';
+      };
+
+      toAppend += '<td><input type="button" onClick="g.endTurn();updatePlayerBoard();" value="end turn" /><input type="button" onClick="resetTwerqle();" value="reset turn" /></td>';
+      toAppend += '</tr></table>';
+    }
+    toAppend += '</div>';
+  };
+  toAppend += '</div>';
+  $('#players').replaceWith(toAppend);
+  $('td.rack svg.tile').draggable({
+                          revert: validDrop,
+                          snapTolerance: 3,
+                          // snapMode: "outer",
+                          snap:'td.playable',
+                          start:  function(event, ui) {
+                            heldTile = this;
+                            // console.log(heldTileNum);
+
+                            // var draggable = $(this).data("ui-draggable")
+                            // $.each(draggable.snapElements, function(index, element) {
+                            //   if(element.snapping) {
+                            //     draggable._trigger("snapped", event, $.extend({}, ui, {
+                            //       snapElement: $(element.item)
+                            //     }));
+                            //   }
+                            // });
+                            //  Get the possible snap targets: 
+                            // var snapped = $(this).data("ui-draggable").snapElements;
+
+                            // /* Pull out only the snap targets that are "snapping": */
+                            // var snappedTo = $.map(snapped, function(element) {
+                            //   return element.snapping ? element.item : null;
+                            // });
+
+                            // // var row = Number($(snappedTo).attr("row"));
+                            // // var col = Number($(snappedTo).attr("col"));
+
+                            // console.log(snappedTo)
+                            // if (g.placeTile(heldTileNum, row, col)) {
+                            //     updateTwerqle(this, heldTileNum, snappedTo);
+                            //   } else {
+                            //   }
+                            }
+                });
+}
+
 function drawTwerqle() {
   // var view = getView();
   var toAppend, insert, data;;
   $('#twerqle').replaceWith('<div id="twerqle"></div>');
-  view = g.board;
+  var view = g.board;
+  var viewSize = 30;
+  var start = ( ( view[0].length - 1 ) / 2 ) - 30;
+  var end = ( ( view[0].length - 1 ) / 2 ) + 30;
   $('#twerqle').append('<table class="board"></table>');
   var table = $('#twerqle table.board');
-  for(var i = 0; i < view[0].length; i++){
-    insert = '';
+  for(var i = start; i < end; i++){
+    var insert = '';
     insert += '<tr>';
-      for (var j = 0; j < view[0].length; j++) {
+      for (var j = start; j < end; j++) {
         data = scrubTableData(view[i][j])
-        insert += '<td class="grid" row="' + (g.center - viewSize + i) + '" col="' + (g.center - viewSize + j) + '" title="' + (g.center - viewSize + i) + ", " + (g.center - viewSize + j) + '">' + data + '</td>';
+        var row = i;
+        var col = j;
+        insert += '<td class="grid';
+        insert += ((i+j) % 2) ? ' alt' : '';
+        insert += (g.coordsArePlayable(row, col)) ? ' playable"' : '"';
+        insert += ' row="' + row + '" col="' + col + '" title="' + row + ", " + col + '">' + data + '</td>';
       };
     insert += '</tr>';
     $(table).append(insert);
@@ -57,21 +172,78 @@ function drawTwerqle() {
     toAppend += '<div class="player">';
     toAppend += '<p>' + g.players[o].name +'</p>';
     toAppend += '<p>' + g.players[o].score +'</p>';
-    toAppend += '<table class="rack"><tr>';
-    for (var j = 0; j < g.players[o].tiles.length; j++) {
-      toAppend += '<td class="rack" title="' + g.players[o].tiles[j] + '">' + getColoredShape(g.getShape(g.players[o].tiles[j]), g.getColor(g.players[o].tiles[j]), g.players[o].tiles[j]) + '</td>';
-    };
     if (g.getCurrentPlayer() === g.players[o]) {
-      toAppend += '<td><input type="button" onClick="g.endTurn();drawTwerqle();" value="end turn" /><input type="button" onClick="g.resetTurn();drawTwerqle();" value="reset turn" /></td>';
+      toAppend += '<table class="rack"><tr>';
+      for (var j = 0; j < g.players[o].tiles.length; j++) {
+        toAppend += '<td class="rack" title="' + g.players[o].tiles[j] + '">' + getColoredShape(g.players[o].tiles[j]) + '</td>';
+      };
+
+      toAppend += '<td><input type="button" onClick="g.endTurn();updatePlayerBoard();" value="end turn" /><input type="button" onClick="resetTwerqle();" value="reset turn" /></td>';
+      toAppend += '</tr></table>';
     }
-    toAppend += '</tr></table>';
     toAppend += '</div>';
   };
   toAppend += '</div>';
+  
   $('#twerqle').append(toAppend);
   $('#twerqle').draggable();
-  $('td.rack svg.tile').draggable();
+  $('td.rack svg.tile').draggable({
+                          revert: function () { return validDrop;},
+                          snapTolerance: 3,
+                          // snapMode: "outer",
+                          snap:'td.playable',
+                          start:  function(event, ui) {
+                            heldTile = this;
+                            // console.log(heldTileNum);
+
+                            // var draggable = $(this).data("ui-draggable")
+                            // $.each(draggable.snapElements, function(index, element) {
+                            //   if(element.snapping) {
+                            //     draggable._trigger("snapped", event, $.extend({}, ui, {
+                            //       snapElement: $(element.item)
+                            //     }));
+                            //   }
+                            // });
+                            //  Get the possible snap targets: 
+                            // var snapped = $(this).data("ui-draggable").snapElements;
+
+                            // /* Pull out only the snap targets that are "snapping": */
+                            // var snappedTo = $.map(snapped, function(element) {
+                            //   return element.snapping ? element.item : null;
+                            // });
+
+                            // // var row = Number($(snappedTo).attr("row"));
+                            // // var col = Number($(snappedTo).attr("col"));
+
+                            // console.log(snappedTo)
+                            // if (g.placeTile(heldTileNum, row, col)) {
+                            //     updateTwerqle(this, heldTileNum, snappedTo);
+                            //   } else {
+                            //   }
+                            }
+                });
+                    $( "td.playable" ).droppable({
+                      // accept: "svg.tile",
+                      // activeClass: "ui-state-hover",
+                      // hoverClass: "ui-state-active",
+                      hoverClass: "highlight",
+                      drop: function( event, ui ) {
+
+                        var row = Number($(this).attr("row"));
+                        var col = Number($(this).attr("col"));
+                        var heldTileNum = Number($(heldTile).attr("title"));
+                        console.log(heldTileNum + " goes on " + $(this).attr("title"));
+                        if (g.placeTile(heldTileNum, row, col)) {
+                            updateTwerqle(heldTile, heldTileNum, this);
+                            validDrop = true;
+                          } else {
+                            validDrop = false;
+                          }
+                      }
+                    });
+
 }
+
 
 
 // function getView (exCenter) {
@@ -92,15 +264,81 @@ var shapes = [
   function(color, tile) { return '<svg title="'+tile+'" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 32 32" class="tile c' + color + '"><path d="M 26.523062,25.480864 18.963847,21.727906 16.000601,29.630159 13.309171,21.631245 5.6261034,25.123651 9.3790606,17.564436 1.4768081,14.60119 9.4757217,11.909759 5.9833164,4.2266922 13.542531,7.9796494 16.505777,0.07739694 19.197208,8.0763105 26.880275,4.5839052 23.127318,12.14312 l 7.902252,2.963246 -7.998914,2.69143 z"       transform="matrix(0.93272346,0,0,0.93574528,0.60229056,2.1153676)" /></svg>';}
     ]
 
-function getColoredShape(shape, color, tile) {
+function getColoredShape(tile) {
+  var color = g.getColor(tile);
+  var shape = g.getShape(tile);
   return shapes[shape](color, tile);
 }
 
 function scrubTableData(data) {
-  if (data === undefined) return "&nbsp;&nbsp; ";
-  var ret = getColoredShape(g.getShape(data), g.getColor(data), data);
+  if (data === undefined) return "";
+  var ret = getColoredShape(data);
   return ret;
 }
 
 
 drawTwerqle();
+// $('.playable').removeClass('playable');
+// g.playable.push([90,90]);
+// g.playable.push([90,91]);
+// g.playable.push([90,92]);
+// g.playable.push([91,90]);
+// g.playable.push([91,92]);
+// g.playable.push([92,90]);
+// g.playable.push([92,91]);
+// g.playable.push([92,92]);
+// for (var i = g.playable.length - 1; i >= 0; i--) {
+//   getCellByRowCol(g.playable[i][0], g.playable[i][1]).addClass('playable');
+// };
+
+
+// $('body').append(getColoredShape(03));
+// $('body').append(getColoredShape(12));
+// $('body').append(getColoredShape(23));
+// $('body').append('<table><tr><td class="droppable" title="this is my title1"></td></tr><td class="droppable" title="this is my title2"></td></tr><td class="droppable" title="this is my title3"></td></tr></table>')
+
+//   $('svg.tile').draggable({
+//                           snapTolerance: 3,
+//                           // snapMode: "outer",
+//                           snap:'td.droppable',
+//                           stop:  function(event, ui) {
+//                             var heldTileNum = Number($(this).attr("title"));
+//                             // console.log(heldTileNum);
+
+//                             // var draggable = $(this).data("ui-draggable")
+//                             // $.each(draggable.snapElements, function(index, element) {
+//                             //   if(element.snapping) {
+//                             //     draggable._trigger("snapped", event, $.extend({}, ui, {
+//                             //       snapElement: $(element.item)
+//                             //     }));
+//                             //   }
+//                             // });
+//                             /* Get the possible snap targets: */
+//                             // var snapped = $(this).data("ui-draggable").snapElements;
+
+//                             // /* Pull out only the snap targets that are "snapping": */
+//                             // var snappedTo = $.map(snapped, function(element) {
+//                             //   return element.snapping ? element.item : null;
+//                             // });
+
+//                             // var row = Number($(snappedTo).attr("row"));
+//                             // var col = Number($(snappedTo).attr("col"));
+
+//                             console.log(heldTileNum)
+//                             // if (g.placeTile(heldTileNum, row, col)) {
+//                             //     updateTwerqle(this, heldTileNum, snappedTo);
+//                             //   } else {
+//                             //   }
+//                             }
+//                 });
+
+//     $( "td.droppable" ).droppable({
+//       // accept: "svg.tile",
+//       // activeClass: "ui-state-hover",
+//       // hoverClass: "ui-state-active",
+//       drop: function( event, ui ) {
+//         $( this )
+//           .addClass( "ui-state-highlight" );
+//         console.log($(this).attr("title"));
+//       }
+//     });
