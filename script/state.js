@@ -40,8 +40,11 @@ function repeatElements(array, times) {
     return out;
 }
 
+exports.maxTypes = 12;
+
 exports.initState = function(playerNames, numTypes, numCopies) {
     var state = {};
+    if (exports.maxTypes < numTypes) throw "Too Many Types";
     state.numTypes = numTypes;       // 6 colors, 6 shapes
     state.copies = numCopies;         // 3 copies of each color+shape combo
     state.tilesPerPlayer = numTypes; // players hold 6 tiles at a time
@@ -401,26 +404,28 @@ exports.initState = function(playerNames, numTypes, numCopies) {
     }
 
     state.getAllPlayable = function() {
-        var checkCoords = [];
+        var checkCoords = []; // coords we've already checked
         var playableNeighbors = [];
         var outer = this;
+
         function recurse(coords) {
             if (exports.coordsIn(coords, checkCoords)) {
                 return [];
-            } else {
-                checkCoords.push(coords);
             }
+            
+            checkCoords.push(coords);
             var neighbors = outer.getCoordNeighbors(coords[0], coords[1]);
             for (var i = neighbors.length - 1; i >= 0; i--) {
                 if (!outer.tileAt(neighbors[i][0], neighbors[i][1])) {
                     playableNeighbors.push(neighbors[i]);
                 } else {
+                    // XXX may overflow stack if enough tiles down.
                     playableNeighbors.concat(recurse(neighbors[i]));
                 }
             };
         }
         
-        recurse([this.center,this.center]);
+        recurse([this.center, this.center]);
 
         return playableNeighbors;
     }

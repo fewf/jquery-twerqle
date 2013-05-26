@@ -36,24 +36,6 @@ function setMinMax(row, col) {
 }
 
 function setDraggableTiles() {
-    // $('div.rack > img').draggable({
-    //     connectToSortable: 'div.rack',
-    //     revert: true,
-    //     snapTolerance: 5,
-    //     snap:'div.playable',
-    //     create: function (event, ui) { 
-    //         console.log("draggable create");
-    //      },
-    //     drag: function (event, ui) { 
-    //         console.log("draggable drag");
-    //      },
-    //     start: function (event, ui) { 
-    //        console.log("draggable start"); 
-    //     },
-    //     stop: function (event, ui) { 
-    //         console.log("draggable stop");
-    //      },
-    // });
     $('div.rack').sortable({
         revert: true,
         start: function(event, ui) { 
@@ -83,24 +65,6 @@ function setDraggableTiles() {
                 width: g.zoomLevel,
                 opacity: 0.7
             });
-            // $(ui.item).draggable({
-            //     connectToSortable: 'div.rack',
-            //     revert: true,
-            //     snapTolerance: 5,
-            //     snap:'div.playable',
-            //     create: function (event, ui) { 
-            //         console.log("draggable create");
-            //      },
-            //     drag: function (event, ui) { 
-            //         console.log("draggable drag");
-            //      },
-            //     start: function (event, ui) { 
-            //        console.log("draggable start"); 
-            //     },
-            //     stop: function (event, ui) { 
-            //         console.log("draggable stop");
-            //      },
-            // });
         },
         activate: function(event, ui) { console.log("sort activate"); }, 
         beforeStop: function (event, ui) { console.log("sortable beforeStop"); },
@@ -270,9 +234,9 @@ function drawBoard() {
         };
     };
     $('#twerqle').css({
-    width: boardWidth,
-    top: -centerY,
-    left: -centerX
+        width: boardWidth,
+        top: -centerY,
+        left: -centerX
     });
     $('#twerqle').draggable();
     $('#twerqle').addClass('zoom' + g.zoomLevel);
@@ -339,7 +303,7 @@ exports.initTwerqle = function() {
 
 function getColoredShape(tile) {
     if (typeof tile === "undefined") return "";
-    var spacer = 12/g.numTypes,
+    var spacer = state.maxTypes/g.numTypes,
         color = g.getColor(tile),
         shape = g.getShape(tile),
         colorClass = Math.floor(color * spacer),
@@ -351,5 +315,3 @@ function getColoredShape(tile) {
         });
     return ret;
 }
-
-// initTwerqle();

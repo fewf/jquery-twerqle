@@ -61,7 +61,8 @@ var initDialog = function() {
         $(this.container).remove()
     }
 
-    $(dialog.container).append($(dialog.createSlider("Colors and Shapes", 2, 12, 6)));
+    $(dialog.container).append($(dialog.createSlider("Colors and Shapes", 2, 
+                                                     state.maxTypes, 6)));
     $(dialog.container).append($(dialog.createSlider("Tile Copies", 1, 10, 3)));
     $(dialog.container).append($(dialog.createSlider("Players", 2, 8, 4)));
     $(dialog.container).append($('<input>', {
