@@ -16,7 +16,6 @@ exports.equalCoords = function(coord1, coord2) {
 exports.coordsIn = function(needle, haystack) {
     for (var i = haystack.length - 1; i >= 0; i--) {
         if (exports.equalCoords(needle, haystack[i])) return true;
-            //// FINISH ME!
     };
     return false;
 }

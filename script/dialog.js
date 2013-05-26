@@ -1,4 +1,6 @@
 var state = require('./state');
+var ui = require('./ui');
+
 
 var initDialog = function() {
     var dialog = {};
@@ -52,7 +54,7 @@ var initDialog = function() {
         g.maxCol = g.center + 15;
         g.heldTile;
         g.zoomLevel = 50;
-        initTwerqle();
+        ui.initTwerqle();
     }
 
     dialog.selfDestruct = function() {

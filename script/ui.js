@@ -328,7 +328,7 @@ function initPlayerBoard() {
     });
 }
 
-function initTwerqle() {
+exports.initTwerqle = function() {
     drawBoard();
     initPlayerBoard();
     setDraggableTiles();
