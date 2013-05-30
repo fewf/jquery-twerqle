@@ -1,8 +1,8 @@
-var state = require('./state');
-var ui = require('./ui');
+window.state = require('./state');
+window.ui = require('./ui');
 
 
-var initDialog = function() {
+exports.initDialog = function() {
     var dialog = {};
     dialog.container = $('<div>', { id: 'dialog-container' });
     $(dialog.container).css({
@@ -14,6 +14,7 @@ var initDialog = function() {
         height: '80%',
         borderRadius: '20px'
     });
+
     dialog.createSlider = function(label, min, max, value) {
         var idMaker = label.toLowerCase().replace(/\s/g, "-");
         var sliderId = idMaker + '-slider';
@@ -81,4 +82,4 @@ var initDialog = function() {
     return dialog;
 }
 
-exports.initDialog = initDialog;
+// exports.initDialog = initDialog;

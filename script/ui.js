@@ -94,7 +94,7 @@ function exchangeTiles() {
     updatePlayerBoard();
 }
 
-function getCellByRowCol(row, col) {
+exports.getCellByRowCol = function(row, col) {
     return $('div.grid[row="'+row+'"][col="'+col+'"]');
 }
 function getRowColByCell(cell) {
@@ -105,7 +105,7 @@ function resetTwerqle(turnHistory) {
     for (var i = g.turnHistory.length - 1; i >= 0; i--) {
         row = g.turnHistory[i][0];
         col = g.turnHistory[i][1];
-        getCellByRowCol(row, col).html("");
+        exports.getCellByRowCol(row, col).html("");
     };
     g.resetTurn();
     updatePlayable();
@@ -129,7 +129,7 @@ function updateTwerqle(tile, tileNum, snappedTo) {
 function updatePlayable() {
     $('.playable').removeClass('playable');
     for (var i = g.playable.length - 1; i >= 0; i--) {
-        getCellByRowCol(g.playable[i][0], g.playable[i][1]).addClass('playable');
+        exports.getCellByRowCol(g.playable[i][0], g.playable[i][1]).addClass('playable');
     };
     setDroppableCells();
 }
@@ -303,7 +303,7 @@ exports.initTwerqle = function() {
 
 function getColoredShape(tile) {
     if (typeof tile === "undefined") return "";
-    var spacer = state.maxTypes/g.numTypes,
+    var spacer = 12/g.numTypes,
         color = g.getColor(tile),
         shape = g.getShape(tile),
         colorClass = Math.floor(color * spacer),
@@ -314,4 +314,21 @@ function getColoredShape(tile) {
             tile: tile
         });
     return ret;
+}
+
+exports.getTileByRackOrder = function(index) {
+    return $('div.rack img.tile:nth-child(' + index + ')');
+}
+
+exports.animateTilePlacement = function(tile, cell) {
+    $(tile).position({my: 'top left', at: 'top left', of: cell, using: function(css, calc) {
+        $(this).animate(css, 500, "linear", function() {
+            var row = Number($(cell).attr("row"));
+            var col = Number($(cell).attr("col"));
+            var heldTileNum = Number($(this).attr("tile"));
+            if (g.placeTile(heldTileNum, row, col)) {
+                updateTwerqle(tile, heldTileNum, cell);
+            }
+        });
+    }})
 }

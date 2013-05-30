@@ -1,4 +1,5 @@
 $(document).ready(function () {
-    var dialog = require('./dialog');
+    window.dialog = require('./dialog');
+
     dialog.initDialog();
 });

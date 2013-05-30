@@ -1,5 +1,5 @@
-var _ = require('underscore');
-var qunit = require('qunit');
+window._ = require('underscore');
+window.qunit = require('qunit');
 
 exports.sum = function(nums) {
     var sum = 0;
@@ -301,6 +301,22 @@ exports.initState = function(playerNames, numTypes, numCopies) {
     } 
 
     state.placeTile = function(tile, row, col) {
+        var ret = this.placeTileValidate(tile, row, col);
+        if (!ret) {
+            this.rewindState(tile, row, col);
+        }
+        return ret;
+    }
+
+    state.testTilePlacement = function(tile, row, col) {
+        var ret = this.placeTileValidate(tile, row, col);
+        this.rewindState(tile, row, col);
+        return ret;
+    }
+
+
+
+    state.placeTileValidate = function(tile, row, col) {
 
         if (this.boardIsEmpty()) {
             // Special handling for first tile placed in game
@@ -327,12 +343,12 @@ exports.initState = function(playerNames, numTypes, numCopies) {
                 return true; 
             } else {
                 // Reverse tile placement
-                this.rewindState(tile, row, col);
+                // this.rewindState(tile, row, col);
                 return false;
             }
         } else {
             // Reverse tile placement
-            this.rewindState(tile, row, col);
+            // this.rewindState(tile, row, col);
             return false;
         }
     }
@@ -360,12 +376,17 @@ exports.initState = function(playerNames, numTypes, numCopies) {
         if (this.boardIsEmpty()) {
             this.playable = [ [g.center, g.center] ];
         } else {
+            var outer = this;
+            // remove just played coords from playable
             this.playable = this.playable.filter( function (x) { 
                     return !exports.equalCoords(x, [row, col]);
                 })
             // var coordIndex = this.playable.indexOf([row, col]);
             // this.playable.splice(coordIndex, 1);
-            var playableNeighbors = this.getPlayableNeighbors(row, col);
+            var playableNeighbors = this.getPlayableNeighbors(row, col).filter(
+                                        function (x) {
+                                            return !exports.coordsIn(x, outer.playable);
+                                        });
             this.playable = this.playable.concat(playableNeighbors);
         }
     }
@@ -417,7 +438,9 @@ exports.initState = function(playerNames, numTypes, numCopies) {
             var neighbors = outer.getCoordNeighbors(coords[0], coords[1]);
             for (var i = neighbors.length - 1; i >= 0; i--) {
                 if (!outer.tileAt(neighbors[i][0], neighbors[i][1])) {
-                    playableNeighbors.push(neighbors[i]);
+                    if (!exports.coordsIn(neighbors[i], playableNeighbors)) {
+                        playableNeighbors.push(neighbors[i]);
+                    }
                 } else {
                     // XXX may overflow stack if enough tiles down.
                     playableNeighbors.concat(recurse(neighbors[i]));
@@ -478,6 +501,12 @@ exports.initState = function(playerNames, numTypes, numCopies) {
         };
 
         return true;
+    }
+
+    state.computerPlay = function() {
+        if (this.boardIsEmpty) {
+
+        }
     }
 
     return state;
