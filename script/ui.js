@@ -258,9 +258,10 @@ function drawBoard() {
 
 function initPlayerBoard() {
     $('#players').append($('<div>', { id: 'player1' }));
-    $('#player1').append($('<p></p>'));
+    $('#player1').append($('<p>'));
     $('#player1').append($('<div>', { id: 'controls' }));
     $('#controls').append($('<input>', {
+        id: "endTurn",
         type: "button",
         on: {
             click: function () {
@@ -281,7 +282,6 @@ function initPlayerBoard() {
         value: "reset turn"
     }));
     $('#controls').append($('<input>', {
-        id: 'hello',
         type: "button",
         on: {
             click: function () {
@@ -289,6 +289,15 @@ function initPlayerBoard() {
             }
         },
         value: "exchange tiles"
+    }));
+    $('#controls').append($('<input>', {
+        type: "button",
+        on: {
+            click: function () {
+                ui.computerPlay();
+            }
+        },
+        value: "computer play"
     }));
     $('#player1').append($('<div>', {'class': 'rack'}));
     for (var i = 2; i <= g.players.length; i++) {
@@ -329,6 +338,10 @@ exports.getTileByRackOrder = function(index) {
     return $('div.rack img.tile:nth-child(' + index + ')');
 }
 
+exports.getTileByNum = function(num) {
+    return $('div.rack img.tile[tile="' + num + '"]:first');
+}
+
 exports.animateTilePlacement = function(tile, cell) {
     $(tile).position({my: 'top left', at: 'top left', of: cell, using: function(css, calc) {
         $(this).animate(css, 500, "linear", function() {
@@ -340,4 +353,59 @@ exports.animateTilePlacement = function(tile, cell) {
             }
         });
     }})
+}
+
+exports.computerPlay = function() {
+    var outer = g;
+    var rack = g.getCurrentPlayer().tiles.slice(0);
+    var lines = g.getAllLinesInRack(rack);
+    var scores = {};
+
+    function recurse(string, lastMove) {
+        var playables = outer.turnPlayable.length;
+        for (var i = 0; i < outer.turnPlayable.length; i++) {
+            var rack = outer.getCurrentPlayer().tiles;
+            var racklength = rack.length;
+            for (var j = rack.length - 1; j >= 0; j--) {
+                var tile = outer.getCurrentPlayer().tiles[j];
+                var row = outer.turnPlayable[i][0];
+                var col = outer.turnPlayable[i][1];
+                if (outer.placeTile(tile, row, col)) {
+                    ui.getCellByRowCol(row, col).html(getColoredShape(tile));
+                    deadend = false;
+                    var newLastMove = 't' + tile + 'r' + row + 'c' + col;
+                    recurse(string + newLastMove, newLastMove);
+                }
+            };
+        };
+        if (string) {
+            var lastMove = lastMove.split(/[trc]/);
+            scores[string] = outer.scoreTurn();
+            outer.rewindState(lastMove[1], lastMove[2], lastMove[3]);
+            ui.getCellByRowCol(lastMove[2], lastMove[3]).html("");
+        }
+        // string = string.slice(0, string.lastIndexOf('t'));
+    }
+
+    for (var i = lines.length - 1; i >= 0; i--) {
+        g.getCurrentPlayer().tiles = lines[i];
+        recurse('','');
+        g.resetTurn();
+    };
+    g.getCurrentPlayer().tiles = rack;
+
+    var highest = 0; 
+    var move; 
+    for (score in scores) 
+        { if (scores[score] > highest) { highest = scores[score]; move = score; } 
+    }
+    var moves = move.split(/[trc]/);
+    moves.shift();
+    for (var i = 0; i < moves.length; i+=3) {
+        var tile = ui.getTileByNum(moves[i]);
+        var cell = ui.getCellByRowCol(moves[i+1], moves[i+2]);
+        ui.animateTilePlacement(tile, cell);
+    };
+
+    return scores;
 }

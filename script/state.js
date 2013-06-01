@@ -45,9 +45,9 @@ exports.maxTypes = 12;
 exports.initState = function(playerNames, numTypes, numCopies) {
     var state = {};
     if (exports.maxTypes < numTypes) throw "Too Many Types";
-    state.numTypes = numTypes;       // 6 colors, 6 shapes
-    state.copies = numCopies;         // 3 copies of each color+shape combo
-    state.tilesPerPlayer = numTypes; // players hold 6 tiles at a time
+    state.numTypes = Number(numTypes);       // 6 colors, 6 shapes
+    state.copies = Number(numCopies);         // 3 copies of each color+shape combo
+    state.tilesPerPlayer = Number(numTypes); // players hold 6 tiles at a time
     var boardSize = exports.maxDimension(state.numTypes, state.copies)*2 - 1;
     state.board = new Array(boardSize);
     for (var i = 0; i < boardSize; i++)
@@ -194,6 +194,8 @@ exports.initState = function(playerNames, numTypes, numCopies) {
                 for (var i = 0; this.tileAt(row, col + i); i++) {
                     endCol = col + i;
                 };
+                turnPlayable.push([row, startCol - 1]);
+                turnPlayable.push([row, endCol + 1]);
             }
 
             if (lines[1].length < this.numTypes) {
@@ -203,12 +205,12 @@ exports.initState = function(playerNames, numTypes, numCopies) {
                 for (var i = 0; this.tileAt(row + i, col); i++) {
                     endRow = row + i;
                 };
+                turnPlayable.push([startRow - 1, col]);
+                turnPlayable.push([endRow + 1, col]);
             }
 
-            turnPlayable.push([row, startCol - 1]);
-            turnPlayable.push([row, endCol + 1]);
-            turnPlayable.push([startRow -1, col]);
-            turnPlayable.push([endRow + 1, col]);
+
+
 
             return turnPlayable;
         } else if (this.turnOrientation === 1) {
@@ -248,7 +250,7 @@ exports.initState = function(playerNames, numTypes, numCopies) {
 
     state.updatePlayable = function(row, col) {
         if (this.boardIsEmpty()) {
-            this.playable = [ [g.center, g.center] ];
+            this.playable = [ [this.center, this.center] ];
         } else {
             var outer = this;
             // remove just played coords from playable
@@ -300,7 +302,10 @@ exports.initState = function(playerNames, numTypes, numCopies) {
     }
 
     state.getAllPlayable = function() {
-        if (this.boardIsEmpty) return [ [this.center, this.center] ];
+        if (this.boardIsEmpty()) {
+            var uhwhat;
+            return [ [this.center, this.center] ];
+        }
         var checkCoords = []; // coords we've already checked
         var playableNeighbors = [];
         var outer = this;
@@ -409,7 +414,7 @@ exports.initState = function(playerNames, numTypes, numCopies) {
     }
 
     state.rewindState = function(tile, row, col) {
-        this.getCurrentPlayer().tiles.push(tile);
+        this.getCurrentPlayer().tiles.push(Number(tile));
         this.board[row][col] = undefined;
         this.turnHistory.pop();
         // this.occupiedCoords.pop();
@@ -427,9 +432,6 @@ exports.initState = function(playerNames, numTypes, numCopies) {
 
 
     state.scoreLine = function(line) {
-        // Special handling for case where first move is just one tile:
-        if (!this.turn && this.turnHistory.length === 1) return 1;
-        // Normal handling:
         if (line.length === 1) return 0;
         if (line.length === this.numTypes) return this.numTypes * 2;
         return line.length;
@@ -441,6 +443,8 @@ exports.initState = function(playerNames, numTypes, numCopies) {
         var score = 0;
 
         if (!th.length) return score;
+        // Special handling for case where first move is just one tile:
+        if (!this.turn && this.turnHistory.length === 1) return 1;
 
         if (th.length === 1) {
             var lines = this.getLines(th[0][0], th[0][1]);
@@ -473,7 +477,7 @@ exports.initState = function(playerNames, numTypes, numCopies) {
         var th = this.turnHistory;
         var player = this.getCurrentPlayer();
         for (var i = th.length - 1; i >= 0; i--) {
-            player.tiles.push(this.board[th[i][0]][th[i][1]]);
+            player.tiles.push(Number(this.board[th[i][0]][th[i][1]]));
             this.board[th[i][0]][th[i][1]] = undefined;
             // this.occupiedCoords.pop();
         };
@@ -561,7 +565,10 @@ exports.initState = function(playerNames, numTypes, numCopies) {
     }
 
     state.boardIsEmpty = function() {
-        return !this.turn && !this.turnHistory.length
+        var firstTurn = Boolean(!this.turn);
+        var noHistory = Boolean(!this.turnHistory.length);
+        var test = (firstTurn && noHistory)
+        return test;
     }
 
 
@@ -578,9 +585,9 @@ exports.initState = function(playerNames, numTypes, numCopies) {
         if (!tiles.length || tiles.length > this.bag.length) return false;
         for (var i = tiles.length - 1; i >= 0; i--) {
             this.removeTileFromRack(tiles[i]);
-            g.bag.push(tiles[i]);
+            this.bag.push(tiles[i]);
         };
-        g.bag = _.shuffle(g.bag);
+        this.bag = _.shuffle(this.bag);
     }
 
     state.coordsTwerqlable = function(row, col) {
@@ -616,21 +623,47 @@ exports.initState = function(playerNames, numTypes, numCopies) {
 
 
 
-    state.computerPlay = function() {
-        var rack = this.getCurrentPlayer().tiles;
-        var lines = this.getAllLinesInRack(rack);
-        var scores = {};
+    // state.computerPlay = function() {
+    //     var outer = this;
+    //     var rack = this.getCurrentPlayer().tiles.slice(0);
+    //     var lines = this.getAllLinesInRack(rack);
+    //     var scores = {};
 
-        function recurse(string) {
+    //     function recurse(string) {
+    //         for (var i = 0; i < outer.turnPlayable.length; i++) {
+    //             var deadend = true;
+    //             var rack = outer.getCurrentPlayer().tiles;
+    //             if (!rack.length) {
+    //                 scores[string] = outer.scoreTurn();
+    //                 outer.resetTurn();
+    //                 break;
+    //             };
+    //             for (var j = 0; j < rack.length; j++) {
+    //                 var tile = outer.getCurrentPlayer().tiles[j];
+    //                 var row = outer.turnPlayable[i][0];
+    //                 var col = outer.turnPlayable[i][1];
+    //                 if (outer.placeTile(tile, row, col)) {
+    //                     deadend = false;
+    //                     recurse(string + 't' + tile + 'r' + row + 'c' + col);
+    //                 }
+    //             };
+    //             if (deadend) {
+    //                 scores[string] = outer.scoreTurn();
+    //                 outer.resetTurn();
+    //                 break;
+    //             }
+    //         };
+    //     }
 
-        }
+    //     for (var i = lines.length - 1; i >= 0; i--) {
+    //         this.getCurrentPlayer().tiles = lines[i];
+    //         recurse('');
+    //     };
 
-        for (var i = this.playable.length - 1; i >= 0; i--) {
-            for (var i = lines.length - 1; i >= 0; i--) {
-                this.determine
-            };
-        };
-    }
+    //     this.resetTurn();
+    //     this.getCurrentPlayer().tiles = rack;
+    //     return scores;
+    // }
 
     return state;
 } 
