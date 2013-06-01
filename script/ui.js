@@ -9,7 +9,7 @@ function setDroppableCells() {
         accept: 'img.tile',
         hoverClass: "highlight",
         drop: function( event, ui ) {
-            console.log("droppable drop");
+            // console.log("droppable drop");
             var row = Number($(this).attr("row"));
             var col = Number($(this).attr("col"));
             var heldTileNum = Number($(g.heldTile).attr("tile"));
@@ -17,12 +17,11 @@ function setDroppableCells() {
                 updateTwerqle(g.heldTile, heldTileNum, this);
             }
         },
-        activate: function (event, ui) { console.log("droppable activate"); },
-        create: function (event, ui) { console.log("droppable create"); },
-        deactivate: function (event, ui) { console.log("droppable deactivate"); },
-        // drop: function (event, ui) { console.log("droppable drop"); },
-        out: function (event, ui) { console.log("droppable out"); },
-        over: function (event, ui) { console.log("droppable over"); }
+        // activate: function (event, ui) { console.log("droppable activate"); },
+        // create: function (event, ui) { console.log("droppable create"); },
+        // deactivate: function (event, ui) { console.log("droppable deactivate"); },
+        // out: function (event, ui) { console.log("droppable out"); },
+        // over: function (event, ui) { console.log("droppable over"); }
     });
 }
 
@@ -39,11 +38,11 @@ function setDraggableTiles() {
     $('div.rack').sortable({
         revert: true,
         start: function(event, ui) { 
-            console.log("sortable start");
+            // console.log("sortable start");
             g.heldTile = ui.item; 
         },
         stop: function (event, ui) {
-            console.log("sortable stop");
+            // console.log("sortable stop");
             $(ui.item).css({
                 height: 50,
                 width: 50,
@@ -51,7 +50,7 @@ function setDraggableTiles() {
             });
         },
         over: function (event, ui) {
-            console.log("sortable over");
+            // console.log("sortable over");
             $(ui.item).css({
                 height: 50,
                 width: 50,
@@ -59,29 +58,43 @@ function setDraggableTiles() {
             });
         },
         out: function(event, ui) {
-            console.log("sortable out");
+            // console.log("sortable out");
             $(ui.item).css({
                 height: g.zoomLevel,
                 width: g.zoomLevel,
                 opacity: 0.7
             });
         },
-        activate: function(event, ui) { console.log("sort activate"); }, 
-        beforeStop: function (event, ui) { console.log("sortable beforeStop"); },
-        change: function (event, ui) { console.log("sortable change"); },
-        create: function (event, ui) { console.log("sortable create"); },
-        deactivate: function (event, ui) { console.log("sortable deactivate"); },
-        // out: function (event, ui) { console.log("sortable out"); },
-        // over: function (event, ui) { console.log("sortable over"); },
-        receive: function (event, ui) { console.log("sortable receive"); },
-        remove: function (event, ui) { console.log("sortable remove"); },
-        sort: function (event, ui) { console.log("sortable sort"); },
-        // start: function (event, ui) { console.log("sortable start"); },
-        // stop: function (event, ui) { console.log("sortable stop"); },
-        update: function (event, ui) { console.log("sortable update"); }
+        activate: function(event, ui) { 
+            console.log("sort activate"); 
+            }, 
+        beforeStop: function (event, ui) { 
+            console.log("sortable beforeStop"); 
+            },
+        change: function (event, ui) { 
+            console.log("sortable change"); 
+            },
+        create: function (event, ui) { 
+            console.log("sortable create"); 
+            },
+        deactivate: function (event, ui) { 
+            console.log("sortable deactivate"); 
+            },
+        receive: function (event, ui) { 
+            console.log("sortable receive"); 
+            },
+        remove: function (event, ui) { 
+            console.log("sortable remove"); 
+            },
+        sort: function (event, ui) { 
+            console.log("sortable sort"); 
+            },
+        update: function (event, ui) { 
+            console.log("sortable update");
+            }
     });
     $('div.rack img.tile').dblclick(function () {
-        $(this).addClass('exchange');
+        $(this).toggleClass('exchange');
     });
 }
 
@@ -127,9 +140,9 @@ function updateTwerqle(tile, tileNum, snappedTo) {
 }
 
 function updatePlayable() {
-    $('.playable').removeClass('playable');
-    for (var i = g.playable.length - 1; i >= 0; i--) {
-        exports.getCellByRowCol(g.playable[i][0], g.playable[i][1]).addClass('playable');
+    $('.playable').droppable('destroy').removeClass('playable');
+    for (var i = g.turnPlayable.length - 1; i >= 0; i--) {
+        exports.getCellByRowCol(g.turnPlayable[i][0], g.turnPlayable[i][1]).addClass('playable');
     };
     setDroppableCells();
 }
@@ -156,20 +169,20 @@ function updatePlayerBoard() {
 }
 
 function updateZoom(newZoom, oldZoom) {
-    var oldTop = parseInt($('#twerqle').css('top'), 10),
-        oldLeft = parseInt($('#twerqle').css('left'), 10),
-        wh = $(window).height(),
-        ww = $(window).width(),
-        oldGridPosY = wh/2 - oldTop,
-        oldGridPosX = ww/2 - oldLeft,
-        newGridPosY = oldGridPosX * (newZoom/oldZoom),
-        newGridPosX = oldGridPosY * (newZoom/oldZoom),
-        newTop = wh/2 - newGridPosY,
-        newLeft = ww/2 - newGridPosX;
-        // boardWidth = ((viewSize * 2) + 1) * (newZoom + 2)
-        var boardWidth = (g.maxCol - g.minCol + 3) * (newZoom + 2);
-        var boardHeight = (g.maxRow - g.minRow + 3) * (newZoom + 2);
-    $('#twerqle').removeClass('zoom' + oldZoom).addClass('zoom' + newZoom);
+    var oldTop = parseInt($('#twerqle').css('top'), 10);
+    var oldLeft = parseInt($('#twerqle').css('left'), 10);
+    var wh = $(window).height();
+    var ww = $(window).width();
+    var oldGridPosY = wh/2 - oldTop;
+    var oldGridPosX = ww/2 - oldLeft;
+    var newGridPosY = oldGridPosX * (newZoom/oldZoom);
+    var newGridPosX = oldGridPosY * (newZoom/oldZoom);
+    var newTop = wh/2 - newGridPosY;
+    var newLeft = ww/2 - newGridPosX;
+    // boardWidth = ((viewSize * 2) + 1) * (newZoom + 2)
+    var boardWidth = (g.maxCol - g.minCol + 3) * (newZoom + 2);
+    var boardHeight = (g.maxRow - g.minRow + 3) * (newZoom + 2);
+$('#twerqle').removeClass('zoom' + oldZoom).addClass('zoom' + newZoom);
     // $('div.grid img.tile').removeClass('zoom' + oldZoom).addClass('zoom' + newZoom);
     // $('div.grid').css({
     //     height: newZoom,
@@ -240,11 +253,7 @@ function drawBoard() {
     });
     $('#twerqle').draggable();
     $('#twerqle').addClass('zoom' + g.zoomLevel);
-    // $('div.grid').css({
-    //     height: g.zoomLevel,
-    //     minWidth: g.zoomLevel
-    // });
-    // updateZoom(g.zoomLevel, g.zoomLevel)
+
 }
 
 function initPlayerBoard() {
@@ -257,6 +266,7 @@ function initPlayerBoard() {
             click: function () {
             g.endTurn();
             updatePlayerBoard();
+            updatePlayable();
             }
         },
         value: "end turn"
@@ -295,7 +305,6 @@ function initPlayerBoard() {
 exports.initTwerqle = function() {
     drawBoard();
     initPlayerBoard();
-    setDraggableTiles();
     setDroppableCells();
     updatePlayable();
     setZoom();
