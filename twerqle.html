@@ -18,28 +18,40 @@
 /*      left: 311px; 
       top: -738px;*/
       cursor: move;
+      /*background-color: black;*/
+      border-top: 1px solid white;
+      border-left: 1px solid white;
     }
-    #twerqle div.grid {
+    #twerqle div.row {
+      clear: both;
+    }
+    #twerqle div.row div.cell {
 /*      min-width: 50px;
       height: 50px;*/
       float: left;
       display: inline-block;
-      border: 1px solid white;
+      border-right: 1px solid white;
+      border-bottom: 1px solid white;
       background-color: #ddd;
     }
-    #twerqle div.alt {
+    #twerqle div.row div.hasTile {
+      border: 1px solid white;
+    }
+    #twerqle div.row div.alt {
       background-color: #eee;
     }
-    #twerqle div.center {
+    #twerqle div.row div.center {
       background-color: #bbffbb;
     }
-    #twerqle div.highlight {
+    #twerqle div.row div.highlight {
       background-color: #00FF15;
     }
-    #twerqle div.start {
+/*    #twerqle div.row div.start {
       clear: both;
-    }
-  
+    }*/
+/*    #twerqle div.playable {
+      background-color: green;
+    }*/
     #player1, #player2, #player3, #player4 {
       position: fixed;
     }
@@ -75,9 +87,10 @@
       margin: 0px;
       padding: 0;
     }
-    img.exchange {
-      padding: 2px;
+    img.selected {
+      margin: 2px;
       border: 2px dotted red;
+      border-radius: 3px;
     }
     img.tile.c0 { background-color: #FF8080; }
     img.tile.c1 { background-color: #FFBF80; }
@@ -91,8 +104,9 @@
     img.tile.c9 { background-color: #BF80FF; }
     img.tile.c10 { background-color: #FF80FF; }
     img.tile.c11 { background-color: #FF80BF; }
+    img.tile.cblack { background-color: black; }
 
-    #players div.player {
+    /*#players div.player {*/
       margin: 1em;
     }
     #controls {
@@ -106,67 +120,76 @@
     #twerqle div.test {
       background-color: red;
     }
-    #twerqle.zoom20 div.grid, #twerqle.zoom20 img.tile {
+
+    #twerqle.zoom10 div.row div.cell, #twerqle.zoom10 img.tile {
+      height: 10px;
+      min-width: 10px;
+    }
+    #twerqle.zoom15 div.row div.cell, #twerqle.zoom15 img.tile {
+      height: 15px;
+      min-width: 15px;
+    }
+    #twerqle.zoom20 div.row div.cell, #twerqle.zoom20 img.tile {
       height: 20px;
       min-width: 20px;
     }
 
-    #twerqle.zoom25 div.grid, #twerqle.zoom25 img.tile {
+    #twerqle.zoom25 div.row div.cell, #twerqle.zoom25 img.tile {
       height: 25px;
       min-width: 25px;
     }
 
-    #twerqle.zoom30 div.grid, #twerqle.zoom30 img.tile {
+    #twerqle.zoom30 div.row div.cell, #twerqle.zoom30 img.tile {
       height: 30px;
       min-width: 30px;
     }
 
-    #twerqle.zoom35 div.grid, #twerqle.zoom35 img.tile {
+    #twerqle.zoom35 div.row div.cell, #twerqle.zoom35 img.tile {
       height: 35px;
       min-width: 35px;
     }
 
-    #twerqle.zoom40 div.grid, #twerqle.zoom40 img.tile {
+    #twerqle.zoom40 div.row div.cell, #twerqle.zoom40 img.tile {
       height: 40px;
       min-width: 40px;
     }
 
-    #twerqle.zoom45 div.grid, #twerqle.zoom45 img.tile {
+    #twerqle.zoom45 div.row div.cell, #twerqle.zoom45 img.tile {
       height: 45px;
       min-width: 45px;
     }
 
-    #twerqle.zoom50 div.grid, #twerqle.zoom50 img.tile {
+    #twerqle.zoom50 div.row div.cell, #twerqle.zoom50 img.tile {
       height: 50px;
       min-width: 50px;
     }
 
-    #twerqle.zoom55 div.grid, #twerqle.zoom55 img.tile {
+    #twerqle.zoom55 div.row div.cell, #twerqle.zoom55 img.tile {
       height: 55px;
       min-width: 55px;
     }
 
-    #twerqle.zoom60 div.grid, #twerqle.zoom60 img.tile {
+    #twerqle.zoom60 div.row div.cell, #twerqle.zoom60 img.tile {
       height: 60px;
       min-width: 60px;
     }
 
-    #twerqle.zoom65 div.grid, #twerqle.zoom65 img.tile {
+    #twerqle.zoom65 div.row div.cell, #twerqle.zoom65 img.tile {
       height: 65px;
       min-width: 65px;
     }
 
-    #twerqle.zoom70 div.grid, #twerqle.zoom70 img.tile {
+    #twerqle.zoom70 div.row div.cell, #twerqle.zoom70 img.tile {
       height: 70px;
       min-width: 70px;
     }
 
-    #twerqle.zoom75 div.grid, #twerqle.zoom75 img.tile {
+    #twerqle.zoom75 div.row div.cell, #twerqle.zoom75 img.tile {
       height: 75px;
       min-width: 75px;
     }
 
-    #twerqle.zoom80 div.grid, #twerqle.zoom80 img.tile {
+    #twerqle.zoom80 div.row div.cell, #twerqle.zoom80 img.tile {
       height: 80px;
       min-width: 80px;
     }

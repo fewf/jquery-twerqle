@@ -9,15 +9,25 @@ exports.sum = function(nums) {
     return sum;
 }
 
+exports.arrayIsSubset = function(array1, array2) {
+    if (array1.length > array2.length) return false;
+    for (var i = array1.length - 1; i >= 0; i--) {
+        if (array2.indexOf(array1[i]) === -1) {
+            return false;
+        }
+    };
+    return true;
+}
+
 exports.equalCoords = function(coord1, coord2) {
     return coord1[0] === coord2[0] && coord1[1] === coord2[1];
 }
 
 exports.coordsIn = function(needle, haystack) {
     for (var i = haystack.length - 1; i >= 0; i--) {
-        if (exports.equalCoords(needle, haystack[i])) return true;
+        if (exports.equalCoords(needle, haystack[i])) return i;
     };
-    return false;
+    return -1;
 }
 
 exports.maxDimension = function(numTypes, copies) {
@@ -42,7 +52,7 @@ function repeatElements(array, times) {
 
 exports.maxTypes = 12;
 
-exports.initState = function(playerNames, numTypes, numCopies) {
+exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
     var state = {};
     if (exports.maxTypes < numTypes) throw "Too Many Types";
     state.numTypes = Number(numTypes);       // 6 colors, 6 shapes
@@ -64,6 +74,7 @@ exports.initState = function(playerNames, numTypes, numCopies) {
 
         players.push({
             name: playerNames[i],
+            type: playerTypes[i],
             score: 0,
             tiles: _.take(state.bag, state.tilesPerPlayer),
         });
@@ -79,6 +90,7 @@ exports.initState = function(playerNames, numTypes, numCopies) {
     // state.occupiedCoords = [];
     state.playable = [ [state.center, state.center] ];
     state.turnPlayable = [ [state.center, state.center] ];
+    state.playableCache = [ [state.center, state.center] ];
 
     state.getShape = function(num) {
         return num % this.numTypes;
@@ -130,32 +142,55 @@ exports.initState = function(playerNames, numTypes, numCopies) {
         return this.players[(this.turn + this.startIndex) % this.players.length]
     }
 
-    state.getColLine = function(row, col) {
+    state.getColLine = function(row, col, coords) {
+        // if optional coords set to true, will return
+        // array of surrounding empty coords
+        var minRow = row;
+        var maxRow = row;
         if (this.board[row][col] === undefined) return [];
         var colLine = [];
         for (var i = 0; this.board[row - i][col] !== undefined; i++) {
             colLine.unshift(this.board[row-i][col]);
+            minRow = row - i;
         };
         for (var i = 1; this.board[row + i][col] !== undefined; i++) {
             colLine.push(this.board[row + i][col]);
+            maxRow = row + i;
         };
+        if (coords) {
+            return [ [minRow - 1, col], [maxRow + 1, col] ];
+        }
         return colLine;        
     }
 
-    state.getRowLine = function(row, col) {
+    state.getRowLine = function(row, col, coords) {
+        // if optional coords set to true, will return
+        // array of surrounding empty coords
+        var minCol = col;
+        var maxCol = col;
         if (this.board[row][col] === undefined) return [];
         var rowLine = [];
         for (var i = 0; this.board[row][col - i] !== undefined; i++) {
             rowLine.unshift(this.board[row][col-i]);
+            minCol = col - i;
         };
         for (var i = 1; this.board[row][col + i] !== undefined; i++) {
             rowLine.push(this.board[row][col + i]);
+            maxCol = col + i;
         };
+        if (coords) {
+            return [ [row, minCol - 1], [row, maxCol + 1] ];
+        }
         return rowLine;
     }
 
-    state.getLines = function(row, col) {
-        return [this.getRowLine(row, col), this.getColLine(row, col)];
+    state.getLines = function(row, col, coords) {
+        if (coords) {
+            var ret = this.getRowLine(row, col, coords);
+            ret = ret.concat(this.getColLine(row, col, coords));
+            return ret;
+        }
+        return [this.getRowLine(row, col, coords), this.getColLine(row, col, coords)];
     }
 
     state.lineIsValid = function(line) {
@@ -177,7 +212,8 @@ exports.initState = function(playerNames, numTypes, numCopies) {
 
     state.getTurnPlayable = function() {
         var th = this.turnHistory;
-        if (!th.length) return this.playable;
+        var allPlayable = this.playable;
+        if (!th.length) return allPlayable;
         var turnPlayable = [];
         var row = th[0][0];
         var col = th[0][1];
@@ -185,60 +221,12 @@ exports.initState = function(playerNames, numTypes, numCopies) {
             var row = th[0][0];
             var col = th[0][1];
 
-            var lines = this.getLines(row, col);
-            var startRow, endRow, startCol, endCol;
-            if (lines[0].length < this.numTypes) {
-                for (var i = 0; this.tileAt(row, col - i); i++) {
-                    startCol = col - i;
-                };
-                for (var i = 0; this.tileAt(row, col + i); i++) {
-                    endCol = col + i;
-                };
-                turnPlayable.push([row, startCol - 1]);
-                turnPlayable.push([row, endCol + 1]);
-            }
-
-            if (lines[1].length < this.numTypes) {
-                for (var i = 0; this.tileAt(row - i, col); i++) {
-                    startRow = row - i;
-                };
-                for (var i = 0; this.tileAt(row + i, col); i++) {
-                    endRow = row + i;
-                };
-                turnPlayable.push([startRow - 1, col]);
-                turnPlayable.push([endRow + 1, col]);
-            }
-
-
-
-
+            var turnPlayable = this.getLines(row, col, true);
             return turnPlayable;
         } else if (this.turnOrientation === 1) {
-            var start, end;
-            var line = this.getRowLine(row, col);
-            if (line.length < this.numTypes) {
-                for (var i = 0; this.tileAt(row, col - i); i++) {
-                    start = col - i;
-                };
-                for (var i = 0; this.tileAt(row, col + i); i++) {
-                    end = col + i;
-                };
-            }
-            turnPlayable.push([row, start - 1]);
-            turnPlayable.push([row, end + 1]);
+            var turnPlayable = this.getRowLine(row, col, true);
         } else if (this.turnOrientation === 2) {
-            var start, end;
-            var line = this.getColLine(row, col);
-            if (line.length < this.numTypes) {
-                for (var i = 0; this.tileAt(row - i, col); i++) {
-                    start = row - i;
-                };
-                for (var i = 0; this.tileAt(row + i, col); i++) {
-                    end = row + i;
-                };
-            }
-            turnPlayable.push([start - 1, col]);
-            turnPlayable.push([end + 1, col]);
+            var turnPlayable = this.getColLine(row, col, true);
         }
 
         return turnPlayable;
@@ -259,11 +247,14 @@ exports.initState = function(playerNames, numTypes, numCopies) {
                 })
             // var coordIndex = this.playable.indexOf([row, col]);
             // this.playable.splice(coordIndex, 1);
-            var playableNeighbors = this.getPlayableNeighbors(row, col).filter(
-                                        function (x) {
-                                            return !exports.coordsIn(x, outer.playable);
-                                        });
-            this.playable = this.playable.concat(playableNeighbors);
+            var playableNeighbors = this.getPlayableNeighbors(row, col);
+            for (var i = playableNeighbors[1].length - 1; i >= 0; i--) {
+                var index = exports.coordsIn(playableNeighbors[1][i], this.playable);
+                if (index !== -1) {
+                    this.playable.splice(index, 1);
+                }
+            };
+            this.playable = this.playable.concat(playableNeighbors[0]);
         }
         this.updateTurnPlayable();
     }
@@ -291,14 +282,23 @@ exports.initState = function(playerNames, numTypes, numCopies) {
 
     state.getPlayableNeighbors = function(row, col) {
         var playableNeighbors = [];
+        var unplayableNeighbors = [];
         var outer = this;
-        var neighbors = this.getCoordNeighbors(row, col);
+        // var neighbors = this.getCoordNeighbors(row, col);
+        var neighbors = this.getLines(row, col, true);
         for (var i = neighbors.length - 1; i >= 0; i--) {
-            if (!this.tileAt(neighbors[i][0], neighbors[i][1])) {
+            if (this.coordsPlayable(neighbors[i][0], neighbors[i][1])) {
                 playableNeighbors.push(neighbors[i]);
+            } else {
+                unplayableNeighbors.push(neighbors[i]);
             }
         };
-        return playableNeighbors;
+
+        playableNeighbors = playableNeighbors.filter(
+                                        function (x) {
+                                            return exports.coordsIn(x, outer.playable) === -1;
+                                        });
+        return [ playableNeighbors, unplayableNeighbors ];
     }
 
     state.getAllPlayable = function() {
@@ -311,7 +311,7 @@ exports.initState = function(playerNames, numTypes, numCopies) {
         var outer = this;
 
         function recurse(coords) {
-            if (exports.coordsIn(coords, checkCoords)) {
+            if (exports.coordsIn(coords, checkCoords) !== -1) {
                 return [];
             }
             
@@ -319,7 +319,7 @@ exports.initState = function(playerNames, numTypes, numCopies) {
             var neighbors = outer.getCoordNeighbors(coords[0], coords[1]);
             for (var i = neighbors.length - 1; i >= 0; i--) {
                 if (!outer.tileAt(neighbors[i][0], neighbors[i][1])) {
-                    if (!exports.coordsIn(neighbors[i], playableNeighbors)) {
+                    if (exports.coordsIn(neighbors[i], playableNeighbors) === -1) {
                         playableNeighbors.push(neighbors[i]);
                     }
                 } else {
@@ -418,7 +418,7 @@ exports.initState = function(playerNames, numTypes, numCopies) {
         this.board[row][col] = undefined;
         this.turnHistory.pop();
         // this.occupiedCoords.pop();
-        this.playable = this.getAllPlayable();
+        if (!this.turnHistory.length) this.playable = this.playableCache;
         this.updateTurnPlayable();
     }
 
@@ -451,7 +451,7 @@ exports.initState = function(playerNames, numTypes, numCopies) {
             score += this.scoreLine(lines[0]);
             score += this.scoreLine(lines[1]);
         } else {
-            if (th[0][0] === th[1][0]) {
+            if (this.turnOrientation === 1) {
                 // mainline is row
                 var mainLine = this.getRowLine(th[0][0], th[0][1])
                 score += this.scoreLine(mainLine);
@@ -483,7 +483,7 @@ exports.initState = function(playerNames, numTypes, numCopies) {
         };
         this.turnHistory = [];
         this.turnOrientation = -1;
-        this.playable = this.getAllPlayable();
+        this.playable = this.playableCache;
         this.updateTurnPlayable();
     }
 
@@ -548,37 +548,58 @@ exports.initState = function(playerNames, numTypes, numCopies) {
         }
     }
 
+    state.determineWinner = function() {
+        var winningScore = -1;
+        for (var i = this.players.length - 1; i >= 0; i--) {
+            if (this.players[i].score > winningScore) {
+                winners = [this.players[i]];
+                winningScore = this.players[i].score;
+            } else if (this.players[i].score === winningScore) {
+                winners.push(this.players[i]);
+            }
+        };
+        return winners;
+    }
+
     state.endTurn = function() {
         if (!this.turnHistory.length) return false;
 
         var player = this.getCurrentPlayer();
-        player.score += this.scoreTurn();
+        var turnScore = this.scoreTurn();
+        player.score += turnScore;
         this.replenishTiles(this.turnHistory.length);
         if (!player.tiles.length) {
             player.score += this.numTypes;
-            console.log("GAME OVER!");
+            var winners = this.determineWinner();
+            return ['game over', winners];
+        } else {
+            this.initNewTurn();
+            return ['score', turnScore];
         }
-        // this.occupiedCoords = this.occupiedCoords.concat(this.turnHistory);
+    }
+
+    state.initNewTurn = function() {
         this.turnHistory = [];
         this.turn++;
         this.updateTurnPlayable();
+        this.playableCache = this.playable;
+        if (this.getCurrentPlayer().type > 1) this.computerPlay();
     }
 
     state.boardIsEmpty = function() {
         var firstTurn = Boolean(!this.turn);
         var noHistory = Boolean(!this.turnHistory.length);
-        var test = (firstTurn && noHistory)
+        var test = (firstTurn && noHistory);
         return test;
     }
-
-
 
     state.exchangeTiles = function(tiles) {
         if (this.turnHistory.length) return false;
         if (!this.playerHasTiles(tiles)) return false;
         this.replenishTiles(tiles.length);
         this.returnTiles(tiles);
-        this.turn++;
+        this.initNewTurn();
+        return ['exchange', tiles.length];
     }
 
     state.returnTiles = function(tiles) {
@@ -590,80 +611,297 @@ exports.initState = function(playerNames, numTypes, numCopies) {
         this.bag = _.shuffle(this.bag);
     }
 
-    state.coordsTwerqlable = function(row, col) {
+    state.coordsPlayable = function(row, col) {
         // FINISH ME!
-        var opp, oppTile, thisTile, check;
-        var neighbors = this.getCoordNeighbors(row, col);
-        var lines = [];
-        lines.push(this.getColLine(neighbors[0][0], neighbors[0][1]));
-        lines.push(this.getColLine(neighbors[1][0], neighbors[1][1]));
-        lines.push(this.getRowLine(neighbors[2][0], neighbors[2][1]));
-        lines.push(this.getRowLine(neighbors[3][0], neighbors[3][1]));
-        function findOpp (index) {
-            if (index % 2) return index - 1
-            else return index + 1
-        }
-        for (var i = lines.length - 1; i >= 0; i--) {
-            if (lines[i].length === this.numTypes) return false;
-            opp = findOpp(i);
-            if (this.tileAt(neighbors[opp][0], neighbors[opp][1])) {
-                oppTile = this.board[neighbors[opp][0]][neighbors[opp][1]];
-                check = lines[i].indexOf(oppTile);
-                if (check !== -1) return false;
-                thisTile = this.board[neighbors[i][0]][neighbors[i][1]];
-                if (this.getShape(thisTile) !== this.getShape(oppTile) &&
-                    this.getColor(thisTile) !== this.getColor(oppTile)) {
-                    return false;
-                }
-            }
+        if (this.tileAt(row, col)) return false;
+
+        var upLine = this.getColLine(row - 1, col);
+        var rightLine = this.getRowLine(row, col + 1);
+        var downLine = this.getColLine(row + 1, col);
+        var leftLine = this.getRowLine(row, col - 1);
+
+        //length test
+        if (upLine.length + downLine.length >= this.numTypes ||
+            leftLine.length + rightLine.length >= this.numTypes)
+            return false;
+
+        // test opposite lines can connect
+        if (!this.linesCanConnect(upLine, downLine) ||
+            !this.linesCanConnect(leftLine, rightLine)) return false;
+
+        // test perpendicular lines can hinge
+        return (this.linesCanHinge(upLine, rightLine) &&
+                this.linesCanHinge(upLine, leftLine) &&
+                this.linesCanHinge(downLine, rightLine) &&
+                this.linesCanHinge(downLine, leftLine));
+    }
+
+    state.lineHasShape = function(line, shape) {
+        for (var i = line.length - 1; i >= 0; i--) {
+            if (this.getShape(line[i]) === shape) return true;
         };
+        return false;
+    }
+
+    state.lineHasColor = function(line, color) {
+        for (var i = line.length - 1; i >= 0; i--) {
+            if (this.getColor(line[i]) === color) return true;
+        };
+        return false;
+    }
+
+    state.linesCanHinge = function(line1, line2) {
+
+        // one or more is blank or both lines are one-length (ambiguous line type)
+        if ((!line1.length || !line2.length) ||
+            (line1.length === 1 && line2.length === 1)) return true;
+
+        var line1Type = this.getLineType(line1);
+        var line2Type = this.getLineType(line2);
+
+
+        // If one line is just one tile, lines fail
+        // if that tile is not of the color|shape of the longer line
+        // AND the longer line has the color|shape 
+        if (line1.length === 1 || line2.length === 1) {
+            // determine which is longer/one-tile
+            if (line1.length === 1) {
+                var testTypes = line1Type;
+                var testTile = line1[0];
+                var longerLineType = line2Type[0];
+                var longerLine = line2;
+            } else if (line2.length === 1) {
+                var testTile = line2[0];
+                var longerLineType = line1Type[0];
+                var longerLine = line1;
+                var testTypes = line2Type;
+            }
+
+            if (testTypes.indexOf(longerLineType) !== -1) return true;
+            if (longerLineType < this.numTypes &&
+                this.getColor(testTile) !== longerLineType &&
+                this.lineHasShape(longerLine, testTypes[1] - this.numTypes)) {
+                return false;
+            } else if (longerLineType >= this.numTypes &&
+                this.getShape(testTile) !== longerLineType &&
+                this.lineHasColor(longerLine, testTypes[0])) {
+                return false;            
+            }
+            return true;
+        }
+
+        // two >1-length lines
+
+        line1Type = line1Type[0];
+        line2Type = line2Type[0];
+
+        // If same type of lines, its not hinge-able if
+        // among the two are already all the kinds of that
+        // line
+        if (line1Type === line2Type) {
+            return (_.union(line1, line2).length <= this.numTypes)
+        }
+
+        var line1IsColor = line1Type < this.numTypes
+        var line2IsColor = line2Type < this.numTypes
+        // var line1IsShape = line1Type >= this.numTypes
+        // var line2IsShape = line2Type >= this.numTypes
+
+        // Nothing doing if they are different color lines, or different
+        // shape lines. btw, Number(true) === 1.
+        if (Number(line1IsColor) + Number(line2IsColor) !== 1)
+            return false;
+
+        // Finally, if one is shape, and the other is color, it's only
+        // going to work if the color|shape is already represented.
+        var getShape = this.getShape;
+        var getColor = this.getColor;
+        if (line1IsColor) {
+            if (line1.filter(function(x) { 
+                    return getShape(x) === line2Type - this.numTypes}
+                ).length) return false;
+            if (line2.filter(function(x) { 
+                    return getColor(x) === line1Type}
+                ).length) return false;
+        } else {
+            if (line2.filter(function(x) { 
+                    return getShape(x) === line1Type - this.numTypes}
+                ).length) return false;
+            if (line1.filter(function(x) { 
+                    return getColor(x) === line2Type}
+                ).length) return false;
+        }
 
         return true;
     }
 
+    state.linesCanConnect = function(line1, line2) {
+        // test duplicates first
+        if (_.intersection(line1, line2).length) return false;
+
+        var line1Type = this.getLineType(line1);
+        var line2Type = this.getLineType(line2);
+        var intersection = _.intersection(line1Type, line2Type);
+        return Boolean(intersection.length);
+    }
+
+    state.getLineType = function(line) {
+        if (!line.length) return _.range(this.numTypes * 2);
+
+        var testTile = line[0];
+        var testColor = this.getColor(testTile);
+        var testShape = this.getShape(testTile) + this.numTypes;
+
+        if (line.length === 1) 
+            return [ testColor, testShape ];
+
+        if (this.getColor(line[1]) === testColor) return [ testColor ];
+        else return [ testShape ];
+
+    }
+
+    state.computerPlay = function(type) {
+        var outer = this;
+        var rack = this.getCurrentPlayer().tiles.slice(0);
+        var lines = this.getAllLinesInRack(rack);
+        var linesCopy = lines.slice(0);
+        var newLines = [];
+        var len = lines.length
+        for (var i = len - 1; i >= 0; i--) {
+            var tester = lines.pop();
+            var notSubset = true;
+            for (var j = lines.length - 1; j >= 0; j--) {
+                if (exports.arrayIsSubset(tester, lines[j])) {
+                    notSubset = false;
+                }
+            };
+            if (notSubset) newLines.push(tester);
+        };
+        var scores = {};
+
+        function recurse_optimize_score(string, lastMove) {
+            var playables = outer.turnPlayable;
+            var playablesLength = outer.turnPlayable.length;
+            for (var i = 0; i < outer.turnPlayable.length; i++) {
+                var rack = outer.getCurrentPlayer().tiles;
+                for (var j = rack.length - 1; j >= 0; j--) {
+                    var tile = outer.getCurrentPlayer().tiles[j];
+                    var row = Number(outer.turnPlayable[i][0]);
+                    var col = Number(outer.turnPlayable[i][1]);
+                    if (outer.placeTile(tile, row, col)) {
+                        var newLastMove = 't' + tile + 'r' + row + 'c' + col;
+                        recurse_optimize_score(string + newLastMove, newLastMove);
+                    }
+                };
+            };
+            if (string) {
+                var lastMove = lastMove.split(/[trc]/);
+                scores[string] = outer.scoreTurn();
+                outer.rewindState(Number(lastMove[1]), Number(lastMove[2]), Number(lastMove[3]));
+            }
+        }
+
+        function recurse_avoid_qwerlebait(string, lastMove) {
+            var rack, tile, row, col, lines, newLastMove;
+            for (var i = 0; i < outer.turnPlayable.length; i++) {
+                var rack = outer.getCurrentPlayer().tiles;
+                for (var j = rack.length - 1; j >= 0; j--) {
+                    var tile = outer.getCurrentPlayer().tiles[j];
+                    var row = Number(outer.turnPlayable[i][0]);
+                    var col = Number(outer.turnPlayable[i][1]);
+                    if (outer.placeTile(tile, row, col)) {
+                        var newLastMove = 't' + tile + 'r' + row + 'c' + col;
+                        recurse_avoid_qwerlebait(string + newLastMove, newLastMove);
+                    }
+                };
+            };
+            if (string) {
+                var lines = [];
+                var colLine, rowLine, skip;
+                var lastMove = lastMove.split(/[trc]/);
+                var row = Number(lastMove[2]);
+                var col = Number(lastMove[3]);
+                var skip = false;
 
 
-    // state.computerPlay = function() {
-    //     var outer = this;
-    //     var rack = this.getCurrentPlayer().tiles.slice(0);
-    //     var lines = this.getAllLinesInRack(rack);
-    //     var scores = {};
+                if (outer.turnOrientation === 0) {
+                    rowLine = outer.getRowLine(row, col);
+                    if (rowLine.length === outer.numTypes - 1)
+                        lines = lines.concat(outer.getRowLine(row, col, true));
+                    colLine = outer.getColLine(row, col);
+                    if (colLine.length === outer.numTypes - 1)
+                        lines = lines.concat(outer.getColLine(row, col, true));
+                } else if (outer.turnOrientation === 1) {
+                    rowLine = outer.getRowLine(row, col);
+                    if (rowLine.length === outer.numTypes - 1) 
+                        lines = lines.concat(outer.getRowLine(row, col, true));
+                    for (var i = 0; i < outer.turnHistory.length; i++) {
+                        colLine = outer.getColLine(     outer.turnHistory[i][0],
+                                                        outer.turnHistory[i][1]
+                                                    );
+                        if (colLine.length === outer.numTypes - 1) 
+                            lines = lines.concat(   outer.getColLine(outer.turnHistory[i][0],
+                                                    outer.turnHistory[i][1], true)
+                                                );
+                    };
+                } else if (outer.turnOrientation === 2) {
+                    colLine = outer.getColLine(row, col);
+                    if (colLine.length === outer.numTypes - 1) lines = lines.concat(outer.getColLine(row, col, true));
+                    for (var i = 0; i < outer.turnHistory.length; i++) {
+                        rowLine = outer.getRowLine(outer.turnHistory[i][0], outer.turnHistory[i][1]);
+                        if (rowLine.length === outer.numTypes - 1) lines = lines.concat(outer.getRowLine(outer.turnHistory[i][0], outer.turnHistory[i][1], true));
+                    };
+                }
+                for (var i = 0; i < lines.length; i++) {
+                    if (outer.coordsPlayable(lines[i][0], lines[i][1])) skip = true;
+                };
+                // if (!skip) {
+                    scores[string] = outer.scoreTurn() - (Math.floor(outer.numTypes/2) * Number(skip));
+                // }
+                outer.rewindState(Number(lastMove[1]), Number(lastMove[2]), Number(lastMove[3]));
+                // ui.getCellByRowCol(lastMove[2], lastMove[3]).html("");
+            }
+            // string = string.slice(0, string.lastIndexOf('t'));
+        }
 
-    //     function recurse(string) {
-    //         for (var i = 0; i < outer.turnPlayable.length; i++) {
-    //             var deadend = true;
-    //             var rack = outer.getCurrentPlayer().tiles;
-    //             if (!rack.length) {
-    //                 scores[string] = outer.scoreTurn();
-    //                 outer.resetTurn();
-    //                 break;
-    //             };
-    //             for (var j = 0; j < rack.length; j++) {
-    //                 var tile = outer.getCurrentPlayer().tiles[j];
-    //                 var row = outer.turnPlayable[i][0];
-    //                 var col = outer.turnPlayable[i][1];
-    //                 if (outer.placeTile(tile, row, col)) {
-    //                     deadend = false;
-    //                     recurse(string + 't' + tile + 'r' + row + 'c' + col);
-    //                 }
-    //             };
-    //             if (deadend) {
-    //                 scores[string] = outer.scoreTurn();
-    //                 outer.resetTurn();
-    //                 break;
-    //             }
-    //         };
-    //     }
+        for (var i = newLines.length - 1; i >= 0; i--) {
+            this.getCurrentPlayer().tiles = newLines[i];
+            if (type === 2) {
+                recurse_optimize_score('','');
+            } else {
+                recurse_avoid_qwerlebait('','');
+            }
+            this.resetTurn();
+        };
+        this.getCurrentPlayer().tiles = rack;
 
-    //     for (var i = lines.length - 1; i >= 0; i--) {
-    //         this.getCurrentPlayer().tiles = lines[i];
-    //         recurse('');
-    //     };
+        var highest = 0; 
+        var options; 
+        for (move in scores) {
+            if (scores[move] > highest) {
+                highest = scores[move];
+                options = [move];
+            } else if (scores[move] === highest) {
+                options.push(move);
+            }
+        }
 
-    //     this.resetTurn();
-    //     this.getCurrentPlayer().tiles = rack;
-    //     return scores;
-    // }
+        if (highest) {
+            var index = Math.floor(Math.random() * options.length);
+            var moves = options[index].split(/[trc]/);
+            moves.shift();
+            return ["play", moves];
+            // for (var i = 0; i < moves.length; i+=3) {
+            //     var tile = Number(moves[i]);
+            //     var row = Number(moves[i+1]);
+            //     var col = Number(moves[i+2]);
+            //     this.placeTile(tile, row, col)                
+            // };
+            // this.endTurn();
+        } else {
+            return ["exchange"]
+        }
+    }
 
     return state;
 } 
