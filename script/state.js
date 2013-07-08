@@ -1,5 +1,5 @@
-window._ = require('underscore');
-window.qunit = require('qunit');
+var _ = require('underscore');
+var qunit = require('qunit');
 
 exports.sum = function(nums) {
     var sum = 0;
@@ -82,7 +82,6 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
         // remove the tiles the player took from the "bag"
         state.bag = _.drop(state.bag, state.tilesPerPlayer);
     }
-
     state.players = players;
     state.turn = 0;
     state.turnHistory = [];
@@ -409,7 +408,7 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
     state.updateState = function(tile, row, col) {
         this.removeTileFromRack(tile);
         this.board[row][col] = tile;
-        this.turnHistory.push([row, col]);
+        this.turnHistory.push([row, col, tile]);
         // this.occupiedCoords.push([row, col]);
     }
 
@@ -433,7 +432,9 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
 
     state.scoreLine = function(line) {
         if (line.length === 1) return 0;
-        if (line.length === this.numTypes) return this.numTypes * 2;
+        if (line.length === this.numTypes) {
+            return this.numTypes * 2;
+        }
         return line.length;
     }
 
@@ -469,6 +470,9 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
                 score += exports.sum(subscores);
             }
         }
+
+        // End of game bonus:
+        if (!this.bag.length && !this.getCurrentPlayer().tiles.length) score += this.numTypes;
 
         return score;
     }
@@ -519,12 +523,13 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
             col = this.center;
         } else if (!this.hasNeighbor(row, col)) {
             // Normal handling.
+            console.log('has no neighbor');
             return false;
         }
 
         // Tile placement validation
-        if (this.tileAt(row, col) ||
-            !this.playerHasTile(tile)) return false;
+        if (this.tileAt(row, col)) {console.log('tile already there'); return false;}
+        if (!this.playerHasTile(tile)) {console.log('player dont got tile'); return false;}
         
         // Update state
         this.updateState(tile, row, col);
@@ -539,11 +544,13 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
             } else {
                 // Reverse tile placement
                 // this.rewindState(tile, row, col);
+                console.log('line aint valid');
                 return false;
             }
         } else {
             // Reverse tile placement
             // this.rewindState(tile, row, col);
+            console.log('turn aint line');
             return false;
         }
     }
@@ -569,7 +576,6 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
         player.score += turnScore;
         this.replenishTiles(this.turnHistory.length);
         if (!player.tiles.length) {
-            player.score += this.numTypes;
             var winners = this.determineWinner();
             return ['game over', winners];
         } else {
@@ -583,7 +589,7 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
         this.turn++;
         this.updateTurnPlayable();
         this.playableCache = this.playable;
-        if (this.getCurrentPlayer().type > 1) this.computerPlay();
+        // if (this.getCurrentPlayer().type > 1) this.computerPlay();
     }
 
     state.boardIsEmpty = function() {
@@ -763,10 +769,13 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
     state.computerPlay = function(type) {
         var outer = this;
         var rack = this.getCurrentPlayer().tiles.slice(0);
+
+        // Reduce possible lines in rack to only those which
+        // are not subsets of others.
         var lines = this.getAllLinesInRack(rack);
         var linesCopy = lines.slice(0);
         var newLines = [];
-        var len = lines.length
+        var len = lines.length;
         for (var i = len - 1; i >= 0; i--) {
             var tester = lines.pop();
             var notSubset = true;
@@ -777,6 +786,8 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
             };
             if (notSubset) newLines.push(tester);
         };
+
+        if (this.boardIsEmpty()) type = 10;
         var scores = {};
 
         function recurse_optimize_score(string, lastMove) {
@@ -804,16 +815,20 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
         function recurse_avoid_qwerlebait(string, lastMove) {
             var rack, tile, row, col, lines, newLastMove;
             for (var i = 0; i < outer.turnPlayable.length; i++) {
-                var rack = outer.getCurrentPlayer().tiles;
-                for (var j = rack.length - 1; j >= 0; j--) {
-                    var tile = outer.getCurrentPlayer().tiles[j];
-                    var row = Number(outer.turnPlayable[i][0]);
-                    var col = Number(outer.turnPlayable[i][1]);
-                    if (outer.placeTile(tile, row, col)) {
-                        var newLastMove = 't' + tile + 'r' + row + 'c' + col;
-                        recurse_avoid_qwerlebait(string + newLastMove, newLastMove);
-                    }
-                };
+                // if (string || playableRange.indexOf(i) !== -1) {
+                    var rack = outer.getCurrentPlayer().tiles;
+                    for (var j = rack.length - 1; j >= 0; j--) {
+                        var tile = outer.getCurrentPlayer().tiles[j];
+                        var row = Number(outer.turnPlayable[i][0]);
+                        var col = Number(outer.turnPlayable[i][1]);
+                        if (Math.random() < type * ( 0.5 * ( 1 / outer.turnHistory.length + 1 ) )) {
+                            if (outer.placeTile(tile, row, col)) {
+                                var newLastMove = 't' + tile + 'r' + row + 'c' + col;
+                                recurse_avoid_qwerlebait(string + newLastMove, newLastMove);
+                            }
+                        }
+                    };
+                // }
             };
             if (string) {
                 var lines = [];
@@ -866,11 +881,11 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
 
         for (var i = newLines.length - 1; i >= 0; i--) {
             this.getCurrentPlayer().tiles = newLines[i];
-            if (type === 2) {
-                recurse_optimize_score('','');
-            } else {
+            // if (type === 2) {
+            //     recurse_optimize_score('','');
+            // } else {
                 recurse_avoid_qwerlebait('','');
-            }
+            // }
             this.resetTurn();
         };
         this.getCurrentPlayer().tiles = rack;

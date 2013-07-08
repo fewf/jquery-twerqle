@@ -71,19 +71,19 @@ exports.getCellByRowCol = function (row, col) {
 exports.getRowColByCell = function (cell) {
     return [ Number( $(cell).attr('row') ), Number( $(cell).attr('col') ) ];
 }
-// function resetTurn(turnHistory) {
-//     var row, col;
-//     for (var i = g.turnHistory.length - 1; i >= 0; i--) {
-//         row = g.turnHistory[i][0];
-//         col = g.turnHistory[i][1];
-//         exports.getCellByRowCol(row, col).html('');
-//     };
-//     g.resetTurn();
-//     $('#controls > input').attr('disabled', 'disabled');
-//     g.midTurn = false;
-//     updatePlayable();
-//     updatePlayerBoard();
-// }
+function resetTurn(turnHistory) {
+    var row, col;
+    for (var i = g.turnHistory.length - 1; i >= 0; i--) {
+        row = g.turnHistory[i][0];
+        col = g.turnHistory[i][1];
+        exports.getCellByRowCol(row, col).html('');
+    };
+    g.resetTurn();
+    $('#controls > input').attr('disabled', 'disabled');
+    g.midTurn = false;
+    updatePlayable();
+    updatePlayerBoard();
+}
 
 exports.updateBoardOnMove = function (tile, tileNum, snappedTo) {
     var coords = board.getRowColByCell(snappedTo);
@@ -108,22 +108,22 @@ exports.updatePlayable = function() {
 
 
 
-// exports.updatePlayerBoard = function() {
-//     for (var o = 0; o < g.players.length; o++) {
-//         var index = (g.turn + g.startIndex + o) % g.players.length;
-//         $('#player' + (o + 1) + ' p').replaceWith(
-//             '<p>' + g.players[index].name + ' - ' + g.players[index].score + '</p>'
-//         );
-//     };
-//     $('div.rack').html('');
-//     for (var j = 0; j < g.getCurrentPlayer().tiles.length; j++) {
-//         var xPos = j * (g.zoomLevel + 1);
-//         var newTile = getColoredShape(g.getCurrentPlayer().tiles[j]);
-//         $('div.rack').append($(newTile));
-//         if (g.getCurrentPlayer().type > 1) $('div.rack img.tile').addClass('cblack');
-//     };
-//     setDraggableTiles();
-// }
+exports.updatePlayerBoard = function() {
+    for (var o = 0; o < g.players.length; o++) {
+        var index = (g.turn + g.startIndex + o) % g.players.length;
+        $('#player' + (o + 1) + ' p').replaceWith(
+            '<p>' + g.players[index].name + ' - ' + g.players[index].score + '</p>'
+        );
+    };
+    $('div.rack').html('');
+    for (var j = 0; j < g.getCurrentPlayer().tiles.length; j++) {
+        var xPos = j * (g.zoomLevel + 1);
+        var newTile = board.getColoredShape(g.getCurrentPlayer().tiles[j]);
+        $('div.rack').append($(newTile));
+        if (g.getCurrentPlayer().type > 1) $('div.rack img.tile').addClass('cblack');
+    };
+    pControls.setDraggableTiles();
+}
 
 function makeGridCell (row, col) {
     var ret = '';
@@ -207,61 +207,61 @@ exports.drawBoard = function (){
     $('#twerqle').addClass('zoom' + g.zoomLevel);
 }
 
-// function initPlayerBoard() {
-//     $('#players').append($('<div>', { id: 'player1' }));
-//     $('#player1').append($('<p>'));
-//     $('#player1').append($('<div>', { id: 'controls' }));
-//     $('#controls').append($('<input>', {
-//         id: 'endTurn',
-//         type: 'button',
-//         on: {
-//             click: function () {
-//             g.endTurn();
-//             updatePlayerBoard();
-//             updatePlayable();
-//             play();
-//             }
-//         },
-//         value: 'end turn',
-//         disabled: 'disabled'
-//     }));
-//     $('#controls').append($('<input>', {
-//         id: 'resetTurn',
-//         type: 'button',
-//         on: {
-//             click: function () {
-//             resetTurn();
-//             }
-//         },
-//         value: 'reset turn',
-//         disabled: 'disabled'
-//     }));
-//     $('#controls').append($('<input>', {
-//         id: 'exchangeTiles',
-//         type: 'button',
-//         on: {
-//             click: function () {
-//             exchangeTiles();
-//             }
-//         },
-//         value: 'exchange tiles',
-//         disabled: 'disabled'
-//     }));
-//     $('#player1').append($('<div>', {'class': 'rack'}));
-//     for (var i = 2; i <= g.players.length; i++) {
-//         $('#players').append($('<div>', { id: 'player' + i }));
-//         $('#player' + i).append($('<p>'));
-//     };
-//     updatePlayerBoard();
-//     $('div.rack img.tile').css({
-//         height: g.zoomLevel,
-//         width: g.zoomLevel
-//     });
-// }
+function initPlayerBoard() {
+    $('#players').append($('<div>', { id: 'player1' }));
+    $('#player1').append($('<p>'));
+    $('#player1').append($('<div>', { id: 'controls' }));
+    $('#controls').append($('<input>', {
+        id: 'endTurn',
+        type: 'button',
+        on: {
+            click: function () {
+            g.endTurn();
+            updatePlayerBoard();
+            updatePlayable();
+            play();
+            }
+        },
+        value: 'end turn',
+        disabled: 'disabled'
+    }));
+    $('#controls').append($('<input>', {
+        id: 'resetTurn',
+        type: 'button',
+        on: {
+            click: function () {
+            resetTurn();
+            }
+        },
+        value: 'reset turn',
+        disabled: 'disabled'
+    }));
+    $('#controls').append($('<input>', {
+        id: 'exchangeTiles',
+        type: 'button',
+        on: {
+            click: function () {
+            exchangeTiles();
+            }
+        },
+        value: 'exchange tiles',
+        disabled: 'disabled'
+    }));
+    $('#player1').append($('<div>', {'class': 'rack'}));
+    for (var i = 2; i <= g.players.length; i++) {
+        $('#players').append($('<div>', { id: 'player' + i }));
+        $('#player' + i).append($('<p>'));
+    };
+    board.updatePlayerBoard();
+    $('div.rack img.tile').css({
+        height: g.zoomLevel,
+        width: g.zoomLevel
+    });
+}
 
 exports.initGame = function() {
     board.drawBoard();
-    // initPlayerBoard();
+    initPlayerBoard();
     pControls.setupInterface();
     board.updatePlayable();
     setDroppableCells();
@@ -288,16 +288,23 @@ exports.displayResult = function(result) {
         var announce = $('<div>', { id: 'announce' }).html(result[1] + 'pts!');
         $('body').append(announce);
         window.setTimeout(function() {
-            $(announce).animate({"left": "-=2000px", "top": "-=2000px"}, 500 * g.speed, function() {
+            $(announce).animate({"left": "-=2000px", "top": "-=2000px"}, 250 * g.speed, function() {
                 $(this).remove();
             });
-        }, 250 * g.speed);
+        }, 1000 * g.speed);
     } else if (result[0] === 'game over') {
         var text = "Game over! Winner(s): "
         for (var i = result[1].length - 1; i >= 0; i--) {
             text = text + result[1][i].name + ' ';
         };
-        var announce = $('<div>', { id: 'announce' }).text(text).click(function() { $(this).remove(); });
+        var text = text + ". Click for new game."
+        var announce = $('<div>', { id: 'announce' }).text(text).click(function() {
+            $(this).remove(); 
+            $('#twerqle').empty();
+            $('#controls').remove();
+            $('#player_controls').remove();
+            dialog.initDialog();
+        });
         $('body').append(announce); 
     } else if (result[0] === 'exchange') {
         var announce = $('<div>', { id: 'announce' }).html('exchanged ' + result[1] + ' tiles');
@@ -306,6 +313,6 @@ exports.displayResult = function(result) {
             $(announce).animate({"left": "-=2000px", "top": "-=2000px"}, 500 * g.speed, function() {
                 $(this).remove();
             });
-        }, 250 * g.speed);        
+        }, 1000 * g.speed);        
     }
 }

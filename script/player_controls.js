@@ -3,7 +3,7 @@ exports.setupInterface = function() {
     initPlayerTable();
     initZoom();
     if (g.human) initPlayerControls();
-    setDraggableTiles();
+    pControls.setDraggableTiles();
 }
 
 function initControls() {
@@ -58,19 +58,21 @@ function initZoom() {
                     min: 10,
                     max: 80,
                     value: 50,
-                    step: 5,
+                    step: 10,
                     slide: function (event, ui) {
                         var oldZoom = g.zoomLevel,
                             newZoom = ui.value;
-                        g.zoomLevel = newZoom;
-                        updateZoom(newZoom, oldZoom);
+                            console.log('oldZoom: ' + oldZoom);
+                            console.log('newZoom: ' + newZoom);
+                        pControls.updateZoom(newZoom, oldZoom);
                     }
     });
     $(zoomContainer).append(zoom).append($('<p>').text("ZOOM"));
     $('#controls').append($(zoomContainer));
 }
 
-function updateZoom(newZoom, oldZoom) {
+exports.updateZoom = function (newZoom, oldZoom) {
+    g.zoomLevel = newZoom;
     var oldTop = parseInt($('#twerqle').css('top'), 10);
     var oldLeft = parseInt($('#twerqle').css('left'), 10);
     var wh = $(window).height();
@@ -92,10 +94,19 @@ $('#twerqle').removeClass('zoom' + oldZoom).addClass('zoom' + newZoom);
 }
 exports.endTurn = function(result) {
     if (g.human) board.displayResult(result);
-    board.updatePlayable();
-    if (g.human) pControls.updatePlayerControls();
-    pControls.updatePlayerTable();
-    pControls.play();
+    if (result[0] !== 'game over') {
+        board.updatePlayable();
+        if (g.human) pControls.updatePlayerControls();
+        pControls.updatePlayerTable();
+        pControls.play();
+    } else {
+        pControls.updatePlayerTable();
+        var toStore = {};
+        toStore.players = g.players;
+        $.post("update_db.php", toStore, function (data) {
+            console.log('ajax success!');
+        });
+    }
 }
 function initPlayerControls() {
     var playerControls = $('<div>', { id: 'player_controls'});
@@ -153,10 +164,10 @@ exports.updatePlayerControls = function() {
         var newTile = board.getColoredShape(g.human.tiles[i]);
         $('#rack').append($(newTile));
     };
-    setDraggableTiles();
+    pControls.setDraggableTiles();
 }
 
-function setDraggableTiles() {
+exports.setDraggableTiles = function() {
     $('#rack').sortable({
         revert: 100,
         update: function () {
@@ -247,7 +258,7 @@ exports.play = function() {
     $('#endTurn').attr('disabled', 'disabled');
     $('#exchangeTiles').attr('disabled', 'disabled');
     $('#resetTurn').attr('disabled', 'disabled');
-    if (g.getCurrentPlayer().type > 1) {
-        window.setTimeout(cPlayer.play, 500 * g.gamespeed, g.getCurrentPlayer().type);
+    if (g.getCurrentPlayer().type) {
+        window.setTimeout(cPlayer.play, 1000 * g.speed, g.getCurrentPlayer().type);
     }
 }

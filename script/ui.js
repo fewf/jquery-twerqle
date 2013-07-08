@@ -1,56 +1,73 @@
 
 // var viewSize = 10;
-
-
-
-
 function setDroppableCells() {
-    $( "div.playable" ).droppable({
+    $( 'div.playable' ).droppable({
         accept: 'img.tile',
-        hoverClass: "highlight",
+        hoverClass: 'highlight',
         drop: function( event, ui ) {
-            // console.log("droppable drop");
-            var row = Number($(this).attr("row"));
-            var col = Number($(this).attr("col"));
-            var heldTileNum = Number($(g.heldTile).attr("tile"));
+            var row = Number($(this).attr('row'));
+            var col = Number($(this).attr('col'));
+            var heldTileNum = Number($(g.heldTile).attr('tile'));
             if (g.placeTile(heldTileNum, row, col)) {
                 updateTwerqle(g.heldTile, heldTileNum, this);
             }
         },
-        // activate: function (event, ui) { console.log("droppable activate"); },
-        // create: function (event, ui) { console.log("droppable create"); },
-        // deactivate: function (event, ui) { console.log("droppable deactivate"); },
-        // out: function (event, ui) { console.log("droppable out"); },
-        // over: function (event, ui) { console.log("droppable over"); }
+    });
+    $( 'div.playable').click(function() {
+        if ($('img.selected').length > 1 || !$('img.selected').length) {
+            return false;
+        } else {
+            var selectedTile = $('img.selected');
+            var row = Number($(this).attr('row'));
+            var col = Number($(this).attr('col'));
+            var selectedTileNum = Number($('img.selected').attr('tile'));
+            if (g.placeTile(selectedTileNum, row, col)) {
+                updateTwerqle(selectedTile, selectedTileNum, this);
+            }
+        }
     });
 }
 
 function setMinMax(row, col) {
     var change = false;
-    if (row < g.minRow) { g.minRow = row; change = true; }
-    if (row > g.maxRow) { g.maxRow = row; change = true; }
-    if (col < g.minCol) { g.minCol = col; change = true; }
-    if (col > g.maxCol) { g.maxCol = col; change = true; }
+    if (row - g.numTypes < g.minRow) { 
+        g.minRow = row - g.numTypes;
+        change = true;
+        ui.makeRow(true);
+    }
+    if (row + g.numTypes> g.maxRow) {
+        g.maxRow = row + g.numTypes;
+        change = true;
+        ui.makeRow()
+    }
+    if (col - g.numTypes < g.minCol) {
+        g.minCol = col - g.numTypes;
+        change = true;
+        ui.makeColumn(true);
+    }
+    if (col + g.numTypes> g.maxCol) {
+        g.maxCol = col + g.numTypes;
+        change = true;
+        ui.makeColumn();
+    }
+    g.columns = g.maxCol - g.minCol + 1;
     return change;
 }
 
 function setDraggableTiles() {
     $('div.rack').sortable({
-        revert: true,
+        revert: 500,
         start: function(event, ui) { 
-            // console.log("sortable start");
             g.heldTile = ui.item; 
         },
         stop: function (event, ui) {
-            // console.log("sortable stop");
             $(ui.item).css({
                 height: 50,
                 width: 50,
                 opacity: 1.0
-            });
+            }).removeClass('selected');
         },
         over: function (event, ui) {
-            // console.log("sortable over");
             $(ui.item).css({
                 height: 50,
                 width: 50,
@@ -58,57 +75,40 @@ function setDraggableTiles() {
             });
         },
         out: function(event, ui) {
-            // console.log("sortable out");
             $(ui.item).css({
                 height: g.zoomLevel,
                 width: g.zoomLevel,
                 opacity: 0.7
             });
         },
-        activate: function(event, ui) { 
-            console.log("sort activate"); 
-            }, 
-        beforeStop: function (event, ui) { 
-            console.log("sortable beforeStop"); 
-            },
-        change: function (event, ui) { 
-            console.log("sortable change"); 
-            },
-        create: function (event, ui) { 
-            console.log("sortable create"); 
-            },
-        deactivate: function (event, ui) { 
-            console.log("sortable deactivate"); 
-            },
-        receive: function (event, ui) { 
-            console.log("sortable receive"); 
-            },
-        remove: function (event, ui) { 
-            console.log("sortable remove"); 
-            },
-        sort: function (event, ui) { 
-            console.log("sortable sort"); 
-            },
-        update: function (event, ui) { 
-            console.log("sortable update");
-            }
     });
-    $('div.rack img.tile').dblclick(function () {
-        $(this).toggleClass('exchange');
+    $('div.rack img.tile').click(function () {
+        if (g.midTurn) {
+            $('img.selected').removeClass('selected');
+            $(this).addClass('selected');
+        } else {
+            $(this).toggleClass('selected');
+            if ($('img.selected').length) {
+                $('#exchangeTiles').removeAttr('disabled');
+            } else {
+                $('#exchangeTiles').attr('disabled', 'disabled');
+            }
+        }
     });
 }
 
 function exchangeTiles() {
     var tileNums = [];
-    $('div.rack img.exchange').each( function () {
+    $('div.rack img.selected').each( function () {
         tileNums.push(Number($(this).attr('tile')));
     });
     g.exchangeTiles(tileNums);
     updatePlayerBoard();
+    play();
 }
 
 exports.getCellByRowCol = function(row, col) {
-    return $('div.grid[row="'+row+'"][col="'+col+'"]');
+    return $('div.cell[row="'+row+'"][col="'+col+'"]');
 }
 function getRowColByCell(cell) {
     return [ Number( $(cell).attr('row') ), Number( $(cell).attr('col') ) ];
@@ -118,9 +118,11 @@ function resetTwerqle(turnHistory) {
     for (var i = g.turnHistory.length - 1; i >= 0; i--) {
         row = g.turnHistory[i][0];
         col = g.turnHistory[i][1];
-        exports.getCellByRowCol(row, col).html("");
+        exports.getCellByRowCol(row, col).html('');
     };
     g.resetTurn();
+    $('#controls > input').attr('disabled', 'disabled');
+    g.midTurn = false;
     updatePlayable();
     updatePlayerBoard();
 }
@@ -130,12 +132,11 @@ function updateTwerqle(tile, tileNum, snappedTo) {
     var dimChange = setMinMax(coords[0], coords[1]);
     $(snappedTo).html(getColoredShape(tileNum));
     $(tile).remove();
-    // $(snappedTo).addClass('zoom' + g.zoomLevel)
-    // $(snappedTo).children().css({
-    //     height: g.zoomLevel,
-    //     width: g.zoomLevel
-    // });
-    if (dimChange) drawBoard();
+    $('#endTurn').removeAttr('disabled');
+    $('#resetTurn').removeAttr('disabled');
+    $('#exchangeTiles').attr('disabled', 'disabled');
+    $('img.selected').removeClass('selected');
+    g.midTurn = true;
     updatePlayable();
 }
 
@@ -160,9 +161,10 @@ function updatePlayerBoard() {
 
     $('div.rack').html('');
     for (var j = 0; j < g.getCurrentPlayer().tiles.length; j++) {
-        var xPos = j * (g.zoomLevel + 2);
+        // var xPos = j * (g.zoomLevel + 1);
         var newTile = getColoredShape(g.getCurrentPlayer().tiles[j]);
         $('div.rack').append($(newTile));
+        if (g.getCurrentPlayer().type > 1) $('div.rack img.tile').addClass('cblack');
     };
 
     setDraggableTiles();
@@ -179,19 +181,9 @@ function updateZoom(newZoom, oldZoom) {
     var newGridPosX = oldGridPosY * (newZoom/oldZoom);
     var newTop = wh/2 - newGridPosY;
     var newLeft = ww/2 - newGridPosX;
-    // boardWidth = ((viewSize * 2) + 1) * (newZoom + 2)
-    var boardWidth = (g.maxCol - g.minCol + 3) * (newZoom + 2);
-    var boardHeight = (g.maxRow - g.minRow + 3) * (newZoom + 2);
+    var boardWidth = g.columns * (newZoom + 1);
+    // var boardHeight = (g.maxRow - g.minRow + 1 * 2) * (newZoom + 2);
 $('#twerqle').removeClass('zoom' + oldZoom).addClass('zoom' + newZoom);
-    // $('div.grid img.tile').removeClass('zoom' + oldZoom).addClass('zoom' + newZoom);
-    // $('div.grid').css({
-    //     height: newZoom,
-    //     minWidth: newZoom
-    // });
-    // $('div.grid img.tile').css({
-    //     height: newZoom,
-    //     width: newZoom
-    // });
     $('#twerqle').css({ 
         width: boardWidth, 
         top: newTop, 
@@ -201,8 +193,8 @@ $('#twerqle').removeClass('zoom' + oldZoom).addClass('zoom' + newZoom);
 
 function setZoom() {
     $('#zoom').slider({
-        orientation: "vertical",
-        min: 20,
+        orientation: 'vertical',
+        min: 10,
         max: 80,
         value: 50,
         step: 5,
@@ -217,10 +209,10 @@ function setZoom() {
 }
 
 function makeGridCell (row, col) {
-    var ret = "";
-    var classes = ['grid'];
-    if (col === g.minCol - 1) classes.push('start');
-    if (col === g.maxCol + 1) classes.push('end');
+    var ret = '';
+    var classes = ['cell'];
+    if (col === g.minCol - g.numTypes) classes.push('start');
+    if (col === g.maxCol + g.numTypes) classes.push('end');
     if ((row + col) % 2) classes.push('alt');
     if (row === g.center && col === g.center) classes.push('center');
     var cell = $('<div>', {
@@ -228,23 +220,66 @@ function makeGridCell (row, col) {
         row: row,
         col: col, 
     }).append($(getColoredShape(g.board[row][col])))
-    $('#twerqle').append($(cell));
+    return cell;
 } 
 
+exports.makeRow = function(prepend, rowNum) {
+    var cell;
+    if (typeof rowNum === 'undefined') {
+        rowNum = prepend ? Number($('#twerqle div.row:first').attr('row')) - 1:
+                           Number($('#twerqle div.row:last').attr('row')) + 1;
+    }
+    var row = $('<div>', {
+        'class': 'row',
+        id: 'row-' + rowNum,
+        row: rowNum
+    });
+    if (!prepend) {
+        $('#twerqle').append(row);
+    } else {
+        $('#twerqle').prepend(row);
+    }
+    for (var i = g.minCol; i <= g.maxCol; i++) {
+        cell = makeGridCell(rowNum, i);
+        row.append($(cell));
+    };
+    $('#twerqle').css({
+        top: '-=' + (g.zoomLevel + 2) * Number(prepend)
+    });
+}
+
+exports.makeColumn = function(prepend, colNum) {
+    if (typeof rowNum === 'undefined') {
+        colNum = prepend ? Number($('#twerqle div.row div.cell:first').attr('col')) - 1:
+                           Number($('#twerqle div.row div.cell:last').attr('col')) + 1;
+    }
+    var row;
+    for (var i = g.minRow; i <= g.maxRow; i++) {
+        row = $('#row-' + i);
+        if (!prepend) {
+            $(row).append(makeGridCell(i, colNum));
+        } else {
+            $(row).prepend(makeGridCell(i, colNum));
+        }
+    }
+    $('#twerqle').css({
+        width: '+=' + (g.zoomLevel + 1),
+        left: '-=' + (g.zoomLevel + 1) * Number(prepend)
+    });
+
+}
+
 function drawBoard() {
-    
     var toAppend, insert, data;
     $('#twerqle').empty();
-    var boardWidth = (g.maxCol - g.minCol + 3) * (g.zoomLevel + 2);
-    var boardHeight = (g.maxRow - g.minRow + 3) * (g.zoomLevel + 2);
+    var boardWidth = g.columns * (g.zoomLevel + 1);
+    var boardHeight = (g.maxRow - g.minRow) * (g.zoomLevel + 1);
     var windowWidth = $(window).width();
     var windowHeight = $(window).height();
     var centerX = (boardWidth - windowWidth)/2;
     var centerY = (boardHeight - windowHeight)/2;
-    for(var i = g.minRow - 1; i <= g.maxRow + 1; i++) {
-        for (var j = g.minCol - 1; j <= g.maxCol + 1; j++) { 
-            makeGridCell(i, j);
-        };
+    for(var i = g.minRow; i <= g.maxRow; i++) {
+        ui.makeRow(false, i);
     };
     $('#twerqle').css({
         width: boardWidth,
@@ -253,7 +288,6 @@ function drawBoard() {
     });
     $('#twerqle').draggable();
     $('#twerqle').addClass('zoom' + g.zoomLevel);
-
 }
 
 function initPlayerBoard() {
@@ -261,43 +295,40 @@ function initPlayerBoard() {
     $('#player1').append($('<p>'));
     $('#player1').append($('<div>', { id: 'controls' }));
     $('#controls').append($('<input>', {
-        id: "endTurn",
-        type: "button",
+        id: 'endTurn',
+        type: 'button',
         on: {
             click: function () {
             g.endTurn();
             updatePlayerBoard();
             updatePlayable();
+            play();
             }
         },
-        value: "end turn"
+        value: 'end turn',
+        disabled: 'disabled'
     }));
     $('#controls').append($('<input>', {
-        type: "button",
+        id: 'resetTurn',
+        type: 'button',
         on: {
             click: function () {
             resetTwerqle();
             }
         },
-        value: "reset turn"
+        value: 'reset turn',
+        disabled: 'disabled'
     }));
     $('#controls').append($('<input>', {
-        type: "button",
+        id: 'exchangeTiles',
+        type: 'button',
         on: {
             click: function () {
             exchangeTiles();
             }
         },
-        value: "exchange tiles"
-    }));
-    $('#controls').append($('<input>', {
-        type: "button",
-        on: {
-            click: function () {
-                ui.computerPlay();
-            }
-        },
-        value: "computer play"
+        value: 'exchange tiles',
+        disabled: 'disabled'
     }));
     $('#player1').append($('<div>', {'class': 'rack'}));
     for (var i = 2; i <= g.players.length; i++) {
@@ -317,17 +348,25 @@ exports.initTwerqle = function() {
     setDroppableCells();
     updatePlayable();
     setZoom();
+    play();
+}
+
+function play() {
+    g.midTurn = false;
+    if (g.getCurrentPlayer().type > 1) {
+        window.setTimeout(computerPlay, 100, g.getCurrentPlayer().type);
+    }
 }
 
 function getColoredShape(tile) {
-    if (typeof tile === "undefined") return "";
+    if (typeof tile === 'undefined') return '';
     var spacer = 12/g.numTypes,
         color = g.getColor(tile),
         shape = g.getShape(tile),
         colorClass = Math.floor(color * spacer),
         shapeNumber = Math.floor(shape * spacer);
     var ret = $('<img>', { 
-            src: 'pngs/shape' + shape + '.png',
+            src: 'pngs/shape' + shapeNumber + '.png',
             'class': 'tile c' + colorClass,
             tile: tile
         });
@@ -335,6 +374,7 @@ function getColoredShape(tile) {
 }
 
 exports.getTileByRackOrder = function(index) {
+    // 1-indexed!
     return $('div.rack img.tile:nth-child(' + index + ')');
 }
 
@@ -342,70 +382,40 @@ exports.getTileByNum = function(num) {
     return $('div.rack img.tile[tile="' + num + '"]:first');
 }
 
-exports.animateTilePlacement = function(tile, cell) {
+exports.animateTilePlacement = function(tile, cell, last) {
     $(tile).position({my: 'top left', at: 'top left', of: cell, using: function(css, calc) {
-        $(this).animate(css, 500, "linear", function() {
-            var row = Number($(cell).attr("row"));
-            var col = Number($(cell).attr("col"));
-            var heldTileNum = Number($(this).attr("tile"));
+        $(this).removeClass('cblack');
+        $(this).animate(css, 250, 'linear', function() {
+            var row = Number($(cell).attr('row'));
+            var col = Number($(cell).attr('col'));
+            var heldTileNum = Number($(this).attr('tile'));
             if (g.placeTile(heldTileNum, row, col)) {
                 updateTwerqle(tile, heldTileNum, cell);
             }
+            if (last) $('#endTurn').click();
         });
     }})
 }
 
-exports.computerPlay = function() {
-    var outer = g;
-    var rack = g.getCurrentPlayer().tiles.slice(0);
-    var lines = g.getAllLinesInRack(rack);
-    var scores = {};
-
-    function recurse(string, lastMove) {
-        var playables = outer.turnPlayable.length;
-        for (var i = 0; i < outer.turnPlayable.length; i++) {
-            var rack = outer.getCurrentPlayer().tiles;
-            var racklength = rack.length;
-            for (var j = rack.length - 1; j >= 0; j--) {
-                var tile = outer.getCurrentPlayer().tiles[j];
-                var row = outer.turnPlayable[i][0];
-                var col = outer.turnPlayable[i][1];
-                if (outer.placeTile(tile, row, col)) {
-                    ui.getCellByRowCol(row, col).html(getColoredShape(tile));
-                    deadend = false;
-                    var newLastMove = 't' + tile + 'r' + row + 'c' + col;
-                    recurse(string + newLastMove, newLastMove);
-                }
-            };
+function computerPlay(type) {
+    var move = g.computerPlay(type);
+    if (move[0] === 'play') {
+        var moves = move[1];
+        for (var i = 0; i < moves.length; i+=3) {
+            var tile = ui.getTileByNum(moves[i]);
+            var cell = ui.getCellByRowCol(moves[i+1], moves[i+2]);
+            var last = moves.length === i + 3;
+            ui.animateTilePlacement(tile, cell, last);
         };
-        if (string) {
-            var lastMove = lastMove.split(/[trc]/);
-            scores[string] = outer.scoreTurn();
-            outer.rewindState(lastMove[1], lastMove[2], lastMove[3]);
-            ui.getCellByRowCol(lastMove[2], lastMove[3]).html("");
-        }
-        // string = string.slice(0, string.lastIndexOf('t'));
+    } else {
+        $('div.rack img.tile').addClass('selected');
+        exchangeTiles();
     }
+}
 
-    for (var i = lines.length - 1; i >= 0; i--) {
-        g.getCurrentPlayer().tiles = lines[i];
-        recurse('','');
-        g.resetTurn();
-    };
-    g.getCurrentPlayer().tiles = rack;
-
-    var highest = 0; 
-    var move; 
-    for (score in scores) 
-        { if (scores[score] > highest) { highest = scores[score]; move = score; } 
-    }
-    var moves = move.split(/[trc]/);
-    moves.shift();
-    for (var i = 0; i < moves.length; i+=3) {
-        var tile = ui.getTileByNum(moves[i]);
-        var cell = ui.getCellByRowCol(moves[i+1], moves[i+2]);
-        ui.animateTilePlacement(tile, cell);
-    };
-
-    return scores;
+exports.initializeControls = function() {
+    $('#dialog').remove()
+    $('#twerqle').draggable();
+    $('#twerqle').addClass('zoom20');
+    setZoom();
 }

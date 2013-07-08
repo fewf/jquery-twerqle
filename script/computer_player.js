@@ -28,7 +28,7 @@ exports.play = function(type) {
 
 exports.makeTile = function(tileNum) {
     var tile = board.getColoredShape(tileNum);
-    var compPlayers = g.players.filter(function(x) { return x.type > 1; } );
+    var compPlayers = g.players.filter(function(x) { return Boolean(x.type); } );
     for (var i = 0; i <= compPlayers.length; i++) {
         if (g.getCurrentPlayer().name === compPlayers[i].name) break;
     };
