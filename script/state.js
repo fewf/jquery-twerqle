@@ -72,9 +72,10 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
 
     var players = [];
     for (var i = 0; i < playerNames.length; i++) {
-
+        var bag_count = state.bag.length;
         players.push(new player.Player(playerNames[i], playerTypes[i]));
-        players[i].drawTiles(state.tilesPerPlayer, state.bag);
+        players[i].drawTiles(state, state.tilesPerPlayer);
+        // if (state.bag.count !== bag_count - state.tilesPerPlayer) throw 'nup';
 
     }
     state.players = players;
@@ -85,7 +86,7 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
     state.playable = [ [state.center, state.center] ];
     state.turnPlayable = [ [state.center, state.center] ];
     state.playableCache = [ [state.center, state.center] ];
-    
+
     state.getShape = function(num) {
         return num % this.numTypes;
     }
@@ -571,7 +572,7 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
         var player = this.getCurrentPlayer();
         var turnScore = this.scoreTurn();
         player.score += turnScore;
-        player.drawTiles(this.turnHistory.length, this.bag);
+        player.drawTiles(state, this.turnHistory.length);
         if (!player.tiles.length) {
             var winners = this.determineWinner();
             return ['game over', winners];
@@ -596,28 +597,28 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
         return test;
     }
 
-    state.exchangeTiles = function(tiles) {
-        if (this.turnHistory.length ||
-           !this.playerHasTiles(tiles) ||
-           this.bag.length < tiles.length) return false;
+    // state.exchangeTiles = function(tiles) {
+    //     if (this.turnHistory.length ||
+    //        !this.playerHasTiles(tiles) ||
+    //        this.bag.length < tiles.length) return false;
 
 
-        this.getCurrentPlayer().drawTiles(tiles.length, this.bag);
+    //     this.getCurrentPlayer().drawTiles(tiles.length, this.bag);
 
-        this.returnTiles(tiles);
-        this.initNewTurn();
-        return ['exchange', tiles.length];
-    }
+    //     this.returnTiles(tiles);
+    //     this.initNewTurn();
+    //     return ['exchange', tiles.length];
+    // }
 
-    state.returnTiles = function(tiles) {
-        if (!tiles.length || 
-            tiles.length > this.bag.length) return false;
-        for (var i = tiles.length - 1; i >= 0; i--) {
-            this.removeTileFromRack(tiles[i]);
-            this.bag.push(tiles[i]);
-        };
-        this.bag = _.shuffle(this.bag);
-    }
+    // state.returnTiles = function(tiles) {
+    //     if (!tiles.length || 
+    //         tiles.length > this.bag.length) return false;
+    //     for (var i = tiles.length - 1; i >= 0; i--) {
+    //         this.removeTileFromRack(tiles[i]);
+    //         this.bag.push(tiles[i]);
+    //     };
+    //     this.bag = _.shuffle(this.bag);
+    // }
 
     state.coordsPlayable = function(row, col) {
         
