@@ -60,8 +60,9 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
     state.tilesPerPlayer = Number(numTypes); // players hold 6 tiles at a time
     var boardSize = exports.maxDimension(state.numTypes, state.copies)*2 - 1;
     state.board = new Array(boardSize);
-    for (var i = 0; i < boardSize; i++)
+    for (var i = 0; i < boardSize; i++) {
         state.board[i] = new Array(boardSize);
+    }
     state.center = (boardSize + 1) / 2;  // internal x, y of first placed tile
 
     state.bag = _.shuffle(repeatElements(_.range(0,
@@ -105,7 +106,7 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
         var lines = [];
         tiles = _.uniq(tiles);
  
-        for (i=0; i < this.numTypes; i++) {
+        for (var i = 0; i < this.numTypes; i++) {
             lines.push(tiles.filter(
                 function (x) { return outer.getShape(x) === i; }));
             lines.push(tiles.filter(
@@ -528,7 +529,7 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
         }
 
         // Tile placement validation
-        if (this.tileAt(row, col)) {console.log('tile already there'); return false;}
+        if (this.tileAt(row, col)) {console.log('yup here. tile already there'); return false;}
         if (!this.playerHasTile(tile)) {console.log('player dont got tile'); return false;}
         
         // Update state
@@ -600,8 +601,10 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
     }
 
     state.exchangeTiles = function(tiles) {
-        if (this.turnHistory.length) return false;
-        if (!this.playerHasTiles(tiles)) return false;
+        if (this.turnHistory.length ||
+           !this.playerHasTiles(tiles) ||
+           this.bag.length < tiles.length) return false;
+
         this.replenishTiles(tiles.length);
         this.returnTiles(tiles);
         this.initNewTurn();
@@ -609,7 +612,8 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
     }
 
     state.returnTiles = function(tiles) {
-        if (!tiles.length || tiles.length > this.bag.length) return false;
+        if (!tiles.length || 
+            tiles.length > this.bag.length) return false;
         for (var i = tiles.length - 1; i >= 0; i--) {
             this.removeTileFromRack(tiles[i]);
             this.bag.push(tiles[i]);
@@ -618,7 +622,7 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
     }
 
     state.coordsPlayable = function(row, col) {
-        // FINISH ME!
+        
         if (this.tileAt(row, col)) return false;
 
         var upLine = this.getColLine(row - 1, col);
