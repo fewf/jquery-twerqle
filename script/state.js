@@ -1,5 +1,6 @@
 var _ = require('underscore');
 var qunit = require('qunit');
+var player = require('./player');
 
 exports.sum = function(nums) {
     var sum = 0;
@@ -72,16 +73,9 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
     var players = [];
     for (var i = 0; i < playerNames.length; i++) {
 
+        players.push(new player.Player(playerNames[i], playerTypes[i]));
+        players[i].drawTiles(state.tilesPerPlayer, state.bag);
 
-        players.push({
-            name: playerNames[i],
-            type: playerTypes[i],
-            score: 0,
-            tiles: _.take(state.bag, state.tilesPerPlayer),
-        });
-
-        // remove the tiles the player took from the "bag"
-        state.bag = _.drop(state.bag, state.tilesPerPlayer);
     }
     state.players = players;
     state.turn = 0;
@@ -91,7 +85,7 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
     state.playable = [ [state.center, state.center] ];
     state.turnPlayable = [ [state.center, state.center] ];
     state.playableCache = [ [state.center, state.center] ];
-
+    
     state.getShape = function(num) {
         return num % this.numTypes;
     }
@@ -135,6 +129,8 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
 
         this.startIndex = longestLineLengths.indexOf(Math.max.apply(Math, longestLineLengths));        
     }
+
+
 
     state.getStartIndex();
 
@@ -575,7 +571,7 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
         var player = this.getCurrentPlayer();
         var turnScore = this.scoreTurn();
         player.score += turnScore;
-        this.replenishTiles(this.turnHistory.length);
+        player.drawTiles(this.turnHistory.length, this.bag);
         if (!player.tiles.length) {
             var winners = this.determineWinner();
             return ['game over', winners];
@@ -605,7 +601,9 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
            !this.playerHasTiles(tiles) ||
            this.bag.length < tiles.length) return false;
 
-        this.replenishTiles(tiles.length);
+
+        this.getCurrentPlayer().drawTiles(tiles.length, this.bag);
+
         this.returnTiles(tiles);
         this.initNewTurn();
         return ['exchange', tiles.length];
