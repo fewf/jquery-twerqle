@@ -136,7 +136,7 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
     state.getStartIndex();
 
     state.getCurrentPlayer = function() {
-        return this.players[(this.turn + this.startIndex) % this.players.length]
+        return this.players[(this.turn + this.startIndex) % this.players.length];
     }
 
     state.getColLine = function(row, col, coords) {
