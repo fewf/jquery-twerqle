@@ -69,19 +69,27 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
     var players = [];
     for (var i = 0; i < playerNames.length; i++) {
         var bag_count = state.bag.length;
-        players.push(new Player.Player(playerNames[i], playerTypes[i], numTypes));
+        players.push(new Player.Player(playerNames[i], playerTypes[i], state));
         players[i].drawTiles(state, state.tilesPerPlayer);
     }
 
     state.players = players;
     state.turnHistory = [];
     state.gameHistory = [];
-//    state.playable = [ [state.center, state.center] ];
-//    state.turnPlayable = [ [state.center, state.center] ];
 
     // playableCache remembers the playable state of the board at the
     // beginning of each turn
     state.playableCache = [ [state.board.center, state.board.center] ];
+
+    state.turnGrid = function() {
+        if (!this.turnHistory.length) return this.board.grid;
+
+        var newGrid = this.copy2dArray(this.board.grid);
+        this.turnHistory.map(function(x) {
+            newGrid[x[0]][x[1]] = x[2];
+        });
+        return newGrid;
+    }
 
     state.isInitialState = function() {
         var firstTurn = Boolean(!this.gameHistory.length);
@@ -91,45 +99,85 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
     }
     state.turn = function() { return this.gameHistory.length; }
 
+    state.turnIsColumn = function() {
+        return  this.turnHistory.length > 1 && 
+                this.turnHistory[0][1] === this.turnHistory[1][1];
+    }
+
+    state.turnIsRow = function() {
+        return  this.turnHistory.length > 1 && 
+                this.turnHistory[0][0] === this.turnHistory[1][0];
+    }
+
     state.playable = function() {
 
-        if (!this.turnHistory.length) return this.playableCache;
+        if (!this.turnHistory.length) {
+            return this.playableCache;
+        }
 
-        var row = th[0][0];
-        var col = th[0][1];
+        var row = this.turnHistory[0][0];
+        var col = this.turnHistory[0][1];
 
-        if (this.turnIsRow) {
-            return this.getRowLine(row, col, true);
-        } else if (this.turnIsColumn) {
-            return this.getColLine(row, col, true);
+        if (this.turnIsRow()) {
+            return this.board.getRowLine(row, col, true);
+        } else if (this.turnIsColumn()) {
+            return this.board.getColLine(row, col, true);
         } else {
-            return this.getLines(row, col, true);
+            return this.board.getLines(row, col, true);
         }
     }
 
-    state.copyPlayable = function(playable) {
-        var copy = new Array(playable.length);
+    state.moveLines = function() {
+        var outer = this;
+        var th = this.turnHistory;
 
-        for (var i = playable.length - 1; i >= 0; i--) {
-            copy[i] = playable[i].slice(0);
+        if (!th.length) return [];
+
+
+        if (th.length === 1) return this.board.getLines(th[0][0], th[0][1]);
+
+        if (this.turnIsRow()) {
+            // mainline is row
+            return [this.board.getRowLine(th[0][0], th[0][1])].concat(
+                            th.map(function (x) {
+                                    return outer.board.getColLine(x[0], x[1]);
+                            })
+                        );
+        } else {
+            // mainline is col
+            return [this.board.getColLine(th[0][0], th[0][1])].concat(
+                            th.map(function (x) {
+                                    return outer.board.getRowLine(x[0], x[1]);
+                            })
+                        );
+        }
+
+    }
+
+    state.copy2dArray = function(twodArray) {
+        var copy = new Array(twodArray.length);
+
+        for (var i = twodArray.length - 1; i >= 0; i--) {
+            copy[i] = twodArray[i].slice(0);
         };
 
         return copy;
     }
 
     state.getPlayableOnMove = function(row, col) {
-        var ec = this.equalCoords;
+        var ec = this.board.equalCoords;
         // remove just played coords from playable
-        var newPlayable = this.playable.filter( function (x) {
+
+        var newPlayable = this.playableCache.filter( function (x) {
                             return !ec(x, [row, col]);
                         });
 
-        var playableNeighbors = this.getPlayableNeighbors(row, col);
+        var playableNeighbors = this.board.getPlayableNeighbors(row, col);
 
         // loop through UNplayable neighbors
         for (var i = playableNeighbors[1].length - 1; i >= 0; i--) {
             // check if newly found UNplayable cell is currently in playable
-            var index = this.coordsIn(playableNeighbors[1][i], newPlayable);
+            var index = this.board.coordsIn(playableNeighbors[1][i], newPlayable);
             if (index !== -1) {
                 // remove newly found UNplayable cell from playable.
                 newPlayable.splice(index, 1);
@@ -137,7 +185,7 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
         };
 
         for (var i = playableNeighbors[0].length - 1; i >= 0; i--) {
-            if (this.coordsIn(playableNeighbors[0][i], newPlayable) = -1) {
+            if (this.board.coordsIn(playableNeighbors[0][i], newPlayable) === -1) {
                 newPlayable.push(playableNeighbors[0][i]);
             }
         };
@@ -153,38 +201,34 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
         return Math.floor(num/this.numTypes);
     }
 
+
+
     state.getStartIndex = function() {
         var longestLineLengths = this.players.map(
                                     function (x) {
                                         return x.getLongestLine(state).length;
                                     });
 
-        return longestLineLengths.indexOf(Math.max.apply(Math, longestLineLengths));        
+        var firstPlayer = longestLineLengths.indexOf(Math.max.apply(Math, longestLineLengths));
+        this.players = this.players.slice(firstPlayer).concat(this.players.slice(0,firstPlayer));
     }
 
     state.getCurrentPlayer = function() {
-        return this.players[(this.turn()+ this.startIndex) % this.players.length];
+        return this.players[this.turn() % this.players.length];
     }
-    state.tilePlace = function(tile, row, col) {
-        if ( !this.board.placeTileValidate(tile, row, col) ) throw 'tile not valid';
-        this.getCurrentPlayer().removeTile(tile);
-        this.board.grid[row][col] = tile;
+    state.tilePlace = function(row, col, tile) {
+        if ( !this.board.placeTileValidate(row, col, tile) ) {
+            return false;
+        }
         this.turnHistory.push([row, col, tile]);
         return true;
     }
 
     state.undoTilePlace = function() {
-        if ( this.turnHistory.length < 1 ) return false;
+        if ( this.turnHistory.length === 0 ) return false;
         var lastPlacement = this.turnHistory.pop();
-        var row = lastPlacement[0];
-        var col = lastPlacement[1];
-        var tile = lastPlacement[2];
-        this.getCurrentPlayer().tiles.push(Number(tile));
-        this.board[row][col] = undefined;
-        this.turnHistory.pop();
-        if (!this.turnHistory.length) this.playable = this.playableCache;
         return true;
-    }
+    } 
 
     state.scoreLine = function(line) {
         // below logic works on all but the very first play. handling in place in scoreturn for first play.
@@ -194,54 +238,69 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
 
         return line.length;
     }
-
+    state.gameOver = function() {
+        return this.bag.length + this.getCurrentPlayer().turnTiles().length === 0;
+    }
     state.scoreTurn = function() {
         var outer = this;
-        var th = this.turnHistory;
         var score = 0;
+        // var th = this.turnHistory;
 
-        if (!th.length) return score;
+        if (!this.turnHistory.length) return 0;
 
         // Special handling for case where first move is just one tile:
-        if (this.turn()=== 0 && this.turnHistory.length === 1) return 1;
-
-        if (th.length === 1) {
-            var lines = this.getLines(th[0][0], th[0][1]);
-            score += this.scoreLine(lines[0]);
-            score += this.scoreLine(lines[1]);
-        } else {
-            if (this.board.turnIsRow()) {
-                // mainline is row
-                var mainLine = this.getRowLine(th[0][0], th[0][1])
-                score += this.scoreLine(mainLine);
-                var subscores = th.map(function (x) {
-                        return outer.scoreLine(outer.getColLine(x[0], x[1]));
-                    });
-                score += exports.sum(subscores);
-            } else {
-                // mainline is col
-                var mainLine = this.getColLine(th[0][0], th[0][1])
-                score += this.scoreLine(mainLine);
-                var subscores = th.map(function (x) {
-                        return outer.scoreLine(outer.getRowLine(x[0], x[1]))
-                    });
-                score += exports.sum(subscores);
-            }
-        }
+        if (this.turn() === 0 && this.turnHistory.length === 1) return 1;
 
         // End of game bonus:
-        if (!this.bag.length && !this.getCurrentPlayer().tiles.length) score += this.numTypes;
+        if (this.gameOver()) score += this.numTypes;
 
+        score += exports.sum(this.moveLines().map(function(x) {
+                    return outer.scoreLine(x);
+                }));
+        if ( typeof score != 'number' ) {
+            console.log('score: ' + score);
+            console.log(this.turnHistory);
+            console.log(this.gameHistory);
+            throw 'woops';
+        }
         return score;
+
+        // if (th.length === 1) {
+        //     var lines = this.board.getLines(th[0][0], th[0][1]);
+        //     score += this.scoreLine(lines[0]);
+        //     score += this.scoreLine(lines[1]);
+        // } else {
+        //     if (this.turnIsRow()) {
+        //         // mainline is row
+        //         var mainLine = this.board.getRowLine(th[0][0], th[0][1])
+        //         score += this.scoreLine(mainLine);
+        //         var subscores = th.map(function (x) {
+        //                 return outer.scoreLine(outer.board.getColLine(x[0], x[1]));
+        //             });
+        //         score += exports.sum(subscores);
+        //     } else {
+        //         // mainline is col
+        //         var mainLine = this.board.getColLine(th[0][0], th[0][1])
+        //         score += this.scoreLine(mainLine);
+        //         var subscores = th.map(function (x) {
+        //                 return outer.scoreLine(outer.board.getRowLine(x[0], x[1]))
+        //             });
+        //         score += ;
+        //     }
+        // }
+
+
+
+        // return score;
     }
 
     state.resetTurn = function () {
-        var th = this.turnHistory;
-        var player = this.getCurrentPlayer();
-        for (var i = th.length - 1; i >= 0; i--) {
-            player.tiles.push(Number(this.board[th[i][0]][th[i][1]]));
-            this.board.grid[th[i][0]][th[i][1]] = undefined;
-        };
+        // var th = this.turnHistory;
+        // var player = this.getCurrentPlayer();
+        // for (var i = th.length - 1; i >= 0; i--) {
+        //     player.tiles.push(Number(th[i][2]));
+        //     this.board.grid[th[i][0]][th[i][1]] = undefined;
+        // };
         this.turnHistory = [];
     }
 
@@ -262,27 +321,39 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
 
         if (!this.turnHistory.length) return false;
 
-        for (var i = 0; i < this.turnHistory.length; i++) {
-            this.playableCache = this.getPlayableOnMove(this.turnHistory[i][0], this.turnHistory[i][1]);
-        };
 
         var player = this.getCurrentPlayer();
 
+        var row
+        var col
+        var tile
+
+
+        for (var i = 0; i < this.turnHistory.length; i++) {
+            var row = this.turnHistory[i][0];
+            var col = this.turnHistory[i][1];
+            var tile = this.turnHistory[i][2];
+
+            this.board.grid[row][col] = tile;
+            this.playableCache = this.getPlayableOnMove(row, col);
+            player.removeTile(tile);
+        };
+
+
         var turnScore = this.scoreTurn();
-
         player.score += turnScore;
-
         player.drawTiles(state, this.turnHistory.length);
-
         this.gameHistory.push(this.turnHistory);
 
         this.turnHistory = [];
 
         this.endTurn();
+
+
     }
 
     state.endExchangeTurn = function(selectedTiles) {
-        this.gameHistory.push(selectedTiles);
+        this.gameHistory.push(['exchange', selectedTiles]);
 
         this.endTurn();
     }
@@ -292,49 +363,55 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
     }
 
     state.computerPlay = function(type) {
+
         var outer = this;
-        var rack = this.getCurrentPlayer().tiles.slice(0);
+        var plyr = this.getCurrentPlayer();
 
-        // Reduce possible lines in rack to only those which
-        // are not subsets of others.
-        var lines = this.getAllLinesInRack(rack);
-        var linesCopy = lines.slice(0);
-        var newLines = [];
-        var len = lines.length;
-        for (var i = len - 1; i >= 0; i--) {
-            var tester = lines.pop();
-            var notSubset = true;
-            for (var j = lines.length - 1; j >= 0; j--) {
-                if (exports.arrayIsSubset(tester, lines[j])) {
-                    newLines.push(tester);
-                    continue;
-                }
+        if (this.isInitialState()) {
+            var move = [];
+            var line = plyr.getLongestLine(this);
+            for (var i = 0; i < line.length; i++) {
+                move.push(line[i]);
+                move.push(this.board.center);
+                move.push(this.board.center + i);
             };
-            if (notSubset) newLines.push(tester);
-        };
+            return ['play', move];
+        }
 
-        if (this.boardIsEmpty()) type = 10;
+        var lines = plyr.getAllLinesInRack(this);
+
         var scores = {};
 
-        function recurse_optimize_score(string, lastMove) {
-            var playables = outer.turnPlayable;
-            var playablesLength = outer.turnPlayable.length;
-            for (var i = 0; i < outer.turnPlayable.length; i++) {
-                var rack = outer.getCurrentPlayer().tiles;
+
+        function recurse_optimize_score(rack, string, lastMove) {
+            // console.log('enter with rack: ' + outer.board.printTiles(rack));
+            // console.log(outer.board.printTiles(rack));
+            var playables = outer.playable();
+            for (var i = 0; i < playables.length; i++) {
+                var row = Number(playables[i][0]);
+                var col = Number(playables[i][1]);
+
                 for (var j = rack.length - 1; j >= 0; j--) {
-                    var tile = outer.getCurrentPlayer().tiles[j];
-                    var row = Number(outer.turnPlayable[i][0]);
-                    var col = Number(outer.turnPlayable[i][1]);
-                    if (outer.placeTile(tile, row, col)) {
+
+                    var tile = rack[j];
+                    // console.log('attempt tile place. ' + outer.board.printTile(tile) + ', ' + row + ', ' +col);
+                    if (outer.tilePlace(row, col, tile)) {
+                        // console.log('tile placed.')
+
+                        // outer.board.printBoard(5);
                         var newLastMove = 't' + tile + 'r' + row + 'c' + col;
-                        recurse_optimize_score(string + newLastMove, newLastMove);
+
+                        // console.log('rack: ' + rack);
+                        // console.log(rack.slice(0,j).concat(rack.slice(j + 1)));
+
+                        recurse_optimize_score(rack.slice(0,j).concat(rack.slice(j + 1)), string + newLastMove, newLastMove);
                     }
                 };
             };
             if (string) {
-                var lastMove = lastMove.split(/[trc]/);
+                // console.log(string + ': ' + outer.scoreTurn());
                 scores[string] = outer.scoreTurn();
-                outer.rewindState(Number(lastMove[1]), Number(lastMove[2]), Number(lastMove[3]));
+                outer.undoTilePlace();
             }
         }
 
@@ -404,20 +481,25 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
             }
             // string = string.slice(0, string.lastIndexOf('t'));
         }
-
-        for (var i = newLines.length - 1; i >= 0; i--) {
-            this.getCurrentPlayer().tiles = newLines[i];
+        var printTiles = this.board.printTiles;
+        // console.log('lines:');
+        // lines.map(function(x) { console.log(printTiles(x)); });
+        // console.log('end lines:');
+        for (var i = lines.length - 1; i >= 0; i--) {
+            // console.log(newLines[i]);
+            // this.getCurrentPlayer().tiles = newLines[i];
             // if (type === 2) {
             //     recurse_optimize_score('','');
             // } else {
-                recurse_avoid_qwerlebait('','');
+                // console.log('about to call with:' + this.board.printTiles(lines[i]));
+            recurse_optimize_score(lines[i], '','');
             // }
             this.resetTurn();
         };
-        this.getCurrentPlayer().tiles = rack;
+        // this.getCurrentPlayer().tiles = rack;
 
         var highest = 0; 
-        var options; 
+        var options = []; 
         for (move in scores) {
             if (scores[move] > highest) {
                 highest = scores[move];
@@ -429,25 +511,24 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
 
         if (highest) {
             var index = Math.floor(Math.random() * options.length);
-            var moves = options[index].split(/[trc]/);
+            var moves = options[index].split(/[trc]/).map(function(x) { return Number(x); });
             moves.shift();
             return ["play", moves];
-            // for (var i = 0; i < moves.length; i+=3) {
-            //     var tile = Number(moves[i]);
-            //     var row = Number(moves[i+1]);
-            //     var col = Number(moves[i+2]);
-            //     this.placeTile(tile, row, col)                
-            // };
-            // this.endTurn();
+
         } else {
-            return ["exchange"]
+            var longestLine = plyr.getLongestLine(this);
+            var rack = plyr.tiles.slice(0);
+            for (var i = 0; i < longestLine.length; i++) {
+                rack.splice(rack.indexOf(longestLine[i]), 1);
+            };
+
+            return ["exchange", rack];
         }
     }
 
     state.startIndex = state.getStartIndex();
 
     return state;
-
 
 
 } 
