@@ -11,8 +11,9 @@ var Board = function(boardSize, state) {
     //     this.grid[i] = new Array(boardSize);
     // }
     this.center = (boardSize + 1) / 2;
-
+    this.gridTime = 0;
     this.grid = function(gh) {
+        var start = +new Date();
         var rows = _.flatten(gh.map(function(x) {
                         if ( x[0] != 'exchange') {
                             return x.map(function(y) {
@@ -54,7 +55,8 @@ var Board = function(boardSize, state) {
                 newgrid[move[0] + rowOffset][move[1] + colOffset] = move[2]
             });
         });
-
+        var end = +new Date();
+        this.gridTime += (end - start);
         return { grid: newgrid, 'rowOffset': rowOffset, 'colOffset': colOffset };
     }
 

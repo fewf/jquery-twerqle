@@ -362,7 +362,7 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
     state.endTurn = function() {
         // pass
     }
-
+    state.recurseCalls = 0;
     state.computerPlay = function(type) {
 
         var outer = this;
@@ -385,6 +385,8 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
 
 
         function recurse_optimize_score(rack, string, lastMove) {
+            
+            outer.recurseCalls++;
             // console.log('enter with rack: ' + outer.board.printTiles(rack));
             // console.log(outer.board.printTiles(rack));
             var playables = outer.playable();

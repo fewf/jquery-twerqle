@@ -41,6 +41,9 @@ console.log(plyr.tiles);
 console.log(first_move);
 var moves = first_move[1];
 var grid;
+
+
+var start = +new Date();
 for (var i = 0; i < moves.length; i += 3) {
 	plyr.selectTile(g, Number(moves[i])).placeSelectedTile(g, Number(moves[i + 1]), Number(moves[i + 2]));
 
@@ -66,7 +69,10 @@ while (playTurn(g)) {
 	console.log(g.players.map(function(x) { return ' ' + x.score + ' ';}).join(','));
 	console.log(g.players.map(function(x) { return ' ' + x.tiles.length + ' ';}).join(','));
 }
+var end = +new Date();
 
+console.log('exec time: ' + (end - start));
+console.log('grid time: ' + g.board.gridTime);
 
 
 
