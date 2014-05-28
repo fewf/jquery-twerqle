@@ -79,16 +79,20 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
 
     // playableCache remembers the playable state of the board at the
     // beginning of each turn
-    state.playableCache = [ [state.board.center, state.board.center] ];
+    // state.playableCache = [ [state.board.center, state.board.center] ];
+    state.playableCache = [ [0, 0] ];
 
     state.turnGrid = function() {
-        if (!this.turnHistory.length) return this.board.grid;
+        if (!this.turnHistory.length) return this.board.grid(this.gameHistory);
 
-        var newGrid = this.copy2dArray(this.board.grid);
-        this.turnHistory.map(function(x) {
-            newGrid[x[0]][x[1]] = x[2];
-        });
-        return newGrid;
+        return this.board.grid(this.gameHistory.concat([this.turnHistory]));
+
+
+        // var newGrid = this.copy2dArray(this.board.grid);
+        // this.turnHistory.map(function(x) {
+        //     newGrid[x[0]][x[1]] = x[2];
+        // });
+        // return newGrid;
     }
 
     state.isInitialState = function() {
@@ -172,6 +176,7 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
                             return !ec(x, [row, col]);
                         });
 
+        // debugger;
         var playableNeighbors = this.board.getPlayableNeighbors(row, col);
 
         // loop through UNplayable neighbors
@@ -327,25 +332,21 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
         var row
         var col
         var tile
-
-
-        for (var i = 0; i < this.turnHistory.length; i++) {
-            var row = this.turnHistory[i][0];
-            var col = this.turnHistory[i][1];
-            var tile = this.turnHistory[i][2];
-
-            this.board.grid[row][col] = tile;
-            this.playableCache = this.getPlayableOnMove(row, col);
-            player.removeTile(tile);
-        };
-
-
         var turnScore = this.scoreTurn();
         player.score += turnScore;
         player.drawTiles(state, this.turnHistory.length);
-        this.gameHistory.push(this.turnHistory);
+        var turnPush = this.gameHistory[this.gameHistory.push([]) - 1];
+        while (this.turnHistory.length) {
+            var move = this.turnHistory.pop();
+            turnPush.push(move);
+            var row = move[0];
+            var col = move[1];
+            var tile = move[2];
 
-        this.turnHistory = [];
+            this.playableCache = this.getPlayableOnMove(row, col);
+            player.removeTile(tile);
+        }
+
 
         this.endTurn();
 
@@ -372,8 +373,8 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
             var line = plyr.getLongestLine(this);
             for (var i = 0; i < line.length; i++) {
                 move.push(line[i]);
-                move.push(this.board.center);
-                move.push(this.board.center + i);
+                move.push(0);
+                move.push(0 + i);
             };
             return ['play', move];
         }

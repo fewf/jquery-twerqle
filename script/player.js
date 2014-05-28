@@ -140,6 +140,7 @@ Player.prototype.returnTiles = function(state, selectedTiles) {
 
 Player.prototype.removeTile = function(tile) {
     if (this.tiles.indexOf(tile) === -1) {
+        debugger;
         throw new Error('hasnt tile').stack;
     }
 

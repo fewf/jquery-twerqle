@@ -6,13 +6,61 @@ var shapes = [ '@', '#', '$', '%', '&', '*' ];
 
 
 var Board = function(boardSize, state) {
-    this.grid = new Array(boardSize);
-    for (var i = 0; i < boardSize; i++) {
-        this.grid[i] = new Array(boardSize);
-    }
+    // this.grid = new Array(boardSize);
+    // for (var i = 0; i < boardSize; i++) {
+    //     this.grid[i] = new Array(boardSize);
+    // }
     this.center = (boardSize + 1) / 2;
 
+    this.grid = function(gh) {
+        var rows = _.flatten(gh.map(function(x) {
+                        if ( x[0] != 'exchange') {
+                            return x.map(function(y) {
+                                return y[0];
+                            });
+                        } else {
+                            return 0;
+                        }
+                    }));
+        var cols = _.flatten(gh.map(function(x) {
+                        if ( x[0] != 'exchange') {
+                            return x.map(function(y) {
+                                return y[1];
+                            });
+                        } else {
+                            return 0;
+                        }
+                    }));
+
+        var highRow = Math.max.apply(null, rows.length ? rows : [0]) + 2;
+        var lowRow = Math.min.apply(null, rows.length ? rows : [0]) - 2;
+        var highCol = Math.max.apply(null, cols.length? cols : [0]) + 2;
+        var lowCol = Math.min.apply(null, cols.length? cols : [0]) - 2;
+
+        var rowCount = highRow - lowRow + 1;
+        var rowOffset = lowRow * -1;
+        var colCount = highCol - lowCol + 1;
+        var colOffset = lowCol * -1;
+
+        var newgrid = new Array(rowCount);
+
+        for (var i = 0; i < newgrid.length; i++) {
+            newgrid[i] = new Array(colCount);
+        };
+
+        gh.map(function(turnHistory) {
+            if (turnHistory[0] == 'exchange') return;
+            turnHistory.map(function(move) {
+                newgrid[move[0] + rowOffset][move[1] + colOffset] = move[2]
+            });
+        });
+
+        return { grid: newgrid, 'rowOffset': rowOffset, 'colOffset': colOffset };
+    }
+
     this.printTile = function(tile) {
+        if (typeof tile != 'number') return ' ';
+        if ( typeof tile != 'number' || (tile < 0 || tile > state.numTypes*state.numTypes)) return '_'
         var color = state.getColor(tile);
         var shape = state.getShape(tile);
 
@@ -72,60 +120,92 @@ var Board = function(boardSize, state) {
         };
         console.log('');
     }
+
     this.printBoard = function(offset) {
+        var grid_pkg = state.turnGrid();
+        var grid = grid_pkg.grid;
+        row = '   ';
+        var colNum;
+        var rowNum;
+        for (var i = 0; i < grid[0].length; i++) {
+            colNum = i - grid_pkg.colOffset;
+            row += new Array(4 - String(colNum).length).join(' ');
+            row += colNum;
+        };
 
-        var highRow = Math.max.apply(null, state.playableCache.map(function(x) { return x[0] })) + 1;
-        var lowRow = Math.min.apply(null, state.playableCache.map(function(x) { return x[0] })) - 1;
-        var highCol = Math.max.apply(null, state.playableCache.map(function(x) { return x[1] })) + 1;
-        var lowCol = Math.min.apply(null, state.playableCache.map(function(x) { return x[1] })) -1;
-
-        var row;
-        var center = this.center;
-        var grid = state.turnGrid();
-
-        // if (offset) {
-        //     var highRow = center + offset;
-        //     var lowRow = center - offset;
-        //     var highCol = center + offset;
-        //     var lowCol = center - offset;            
-        // } else {
-        //     var highRow = Math.max.apply(null, state.playableCache.map(function(x) { return x[0] })) + 1;
-        //     var lowRow = Math.min.apply(null, state.playableCache.map(function(x) { return x[0] })) - 1;
-        //     var highCol = Math.max.apply(null, state.playableCache.map(function(x) { return x[1] })) + 1;
-        //     var lowCol = Math.min.apply(null, state.playableCache.map(function(x) { return x[1] })) -1;
-
-        // }
-        var playable = state.playable();
-
-        row = '    ';
-        for (var j = lowCol; j <= highCol; j++) {
-            row += j < 100 ? j + ' ': j + '';
-        }
         console.log(row);
-        for (var i = lowRow; i <= highRow; i++) {
+
+        for (var i = 0; i < grid.length; i++) {
             row = '';
-            for (var j = lowCol, row = row + i < 100 ? i + ' ': i + ''; j <= highCol; j++) {
+            rowNum = i - grid_pkg.rowOffset;
+            row += rowNum;
+            row += new Array(4 - String(rowNum).length).join(' ');
+            for (var j = 0; j < grid[0].length; j++) {
                 var cell;
                 if ( grid[i][j] === undefined ) {
-                    if ( this.coordsIn([i, j], playable) === -1 ) {
-                        cell = ' ';
-                    } else {
-                        cell = clc.bgGreen(' ');
-                    }
+                    cell = ' ';
                 } else {
-                    if ( this.coordsIn([i, j], state.turnHistory.length ? state.turnHistory : state.gameHistory[state.gameHistory.length - 1] ) === -1 ) {
-                        cell = this.printTile(grid[i][j]);
-                    } else {
-                        cell = clc.bgWhite(this.printTile(grid[i][j]));
-                    }
+                    cell = state.board.printTile(grid[i][j]);
                 }
-                row += ' '; 
+                row += '  '; 
                 row += cell;
-                row += ' ';
+                // row += ' ';
             };
             console.log(row);
         };
         console.log('');
+        // var highRow = Math.max.apply(null, state.playableCache.map(function(x) { return x[0] })) + 1;
+        // var lowRow = Math.min.apply(null, state.playableCache.map(function(x) { return x[0] })) - 1;
+        // var highCol = Math.max.apply(null, state.playableCache.map(function(x) { return x[1] })) + 1;
+        // var lowCol = Math.min.apply(null, state.playableCache.map(function(x) { return x[1] })) -1;
+
+        // var row;
+        // var center = this.center;
+        // var grid = state.turnGrid();
+
+        // // if (offset) {
+        // //     var highRow = center + offset;
+        // //     var lowRow = center - offset;
+        // //     var highCol = center + offset;
+        // //     var lowCol = center - offset;            
+        // // } else {
+        // //     var highRow = Math.max.apply(null, state.playableCache.map(function(x) { return x[0] })) + 1;
+        // //     var lowRow = Math.min.apply(null, state.playableCache.map(function(x) { return x[0] })) - 1;
+        // //     var highCol = Math.max.apply(null, state.playableCache.map(function(x) { return x[1] })) + 1;
+        // //     var lowCol = Math.min.apply(null, state.playableCache.map(function(x) { return x[1] })) -1;
+
+        // // }
+        // var playable = state.playable();
+
+        // row = '    ';
+        // for (var j = lowCol; j <= highCol; j++) {
+        //     row += j < 100 ? j + ' ': j + '';
+        // }
+        // console.log(row);
+        // for (var i = lowRow; i <= highRow; i++) {
+        //     row = '';
+        //     for (var j = lowCol, row = row + i < 100 ? i + ' ': i + ''; j <= highCol; j++) {
+        //         var cell;
+        //         if ( grid[i][j] === undefined ) {
+        //             if ( this.coordsIn([i, j], playable) === -1 ) {
+        //                 cell = ' ';
+        //             } else {
+        //                 cell = clc.bgGreen(' ');
+        //             }
+        //         } else {
+        //             if ( this.coordsIn([i, j], state.turnHistory.length ? state.turnHistory : state.gameHistory[state.gameHistory.length - 1] ) === -1 ) {
+        //                 cell = this.printTile(grid[i][j]);
+        //             } else {
+        //                 cell = clc.bgWhite(this.printTile(grid[i][j]));
+        //             }
+        //         }
+        //         row += ' '; 
+        //         row += cell;
+        //         row += ' ';
+        //     };
+        //     console.log(row);
+        // };
+        // console.log('');
     }
     this.equalCoords = function(coord1, coord2) {
         return coord1[0] === coord2[0] && coord1[1] === coord2[1];
@@ -144,8 +224,16 @@ var Board = function(boardSize, state) {
         // array of surrounding empty coords
         //console.log(state.turnGrid()[91][91]);
 
-        var grid = state.turnGrid();
+        var grid_pkg = state.turnGrid();
+        var grid = grid_pkg.grid;
 
+        row = row + grid_pkg.rowOffset;
+        col = col + grid_pkg.colOffset;
+
+
+        if (grid[row] === undefined) {
+            debugger;
+        }
         if (grid[row][col] === undefined) {
             return [];
         }
@@ -165,7 +253,7 @@ var Board = function(boardSize, state) {
             maxRow = row + i;
         };
         if (coords) {
-            return [ [minRow - 1, col], [maxRow + 1, col] ];
+            return [ [minRow - grid_pkg.rowOffset - 1, col - grid_pkg.colOffset], [maxRow - grid_pkg.rowOffset + 1, col - grid_pkg.colOffset] ];
         }
         return colLine;
     }
@@ -174,7 +262,11 @@ var Board = function(boardSize, state) {
         // if optional coords set to true, will return
         // array of surrounding empty coords
 
-        var grid = state.turnGrid();
+        var grid_pkg = state.turnGrid();
+        var grid = grid_pkg.grid;
+        row = row + grid_pkg.rowOffset;
+        col = col + grid_pkg.colOffset;
+
         if (grid[row][col] === undefined) return [];
 
         var minCol = col;
@@ -189,7 +281,7 @@ var Board = function(boardSize, state) {
             maxCol = col + i;
         };
         if (coords) {
-            return [ [row, minCol - 1], [row, maxCol + 1] ];
+            return [ [row - grid_pkg.rowOffset, minCol - grid_pkg.colOffset - 1], [row - grid_pkg.rowOffset, maxCol - grid_pkg.colOffset + 1] ];
         }
         return rowLine;
     }
@@ -238,16 +330,17 @@ var Board = function(boardSize, state) {
         return [ playableNeighbors, unplayableNeighbors ];
     }
 
-    this.getCoordNeighbors = function(row, col) {
-        var neighbors =     [
-                                [row + 1, col], [row - 1, col], 
-                                [row, col + 1], [row, col - 1]
-                            ];
-        return neighbors.filter( function(x) { 
-                return x[0] > 0 && x[0] < this.board.grid.length &&
-                            x[1] > 0 && x[1] < this.board.grid.length;
-            ;});
-    }
+    // this.getCoordNeighbors = function(row, col) {
+    //     var neighbors =     [
+    //                             [row + 1, col], [row - 1, col], 
+    //                             [row, col + 1], [row, col - 1]
+    //                         ];
+    //     return neighbors;                    
+    //     // return neighbors.filter( function(x) { 
+    //     //         return x[0] > 0 && x[0] < this.board.grid.length &&
+    //     //                     x[1] > 0 && x[1] < this.board.grid.length;
+    //     //     ;});
+    // }
 
 
 
@@ -259,7 +352,15 @@ var Board = function(boardSize, state) {
     // }
 
     this.tileAt = function(row,col) {
-        return state.turnGrid()[row][col] !== undefined;
+        var history = state.gameHistory.concat([state.turnHistory]);
+
+        return history.filter(function(turn) {
+            return turn.filter(function(move) {
+                return move[0] === row && move[1] === col;}
+                ).length; 
+            }).length;
+        // var grid_pkg = state.turnGrid();
+        // return grid_pkg.grid[row + grid_pkg.rowOffset][col + ] !== undefined;
     }
 
 
@@ -284,7 +385,7 @@ var Board = function(boardSize, state) {
             state.turnHistory.pop();
             return false;
         }
-        if ( !this.lineIsValid(newLines[1]) ) { 
+        if ( !this.lineIsValid(newLines[1]) ) {
             state.turnHistory.pop();
             return false;
         }
@@ -293,7 +394,11 @@ var Board = function(boardSize, state) {
     }
 
     this.coordsPlayable = function(row, col) {
-        
+        // var grid_pkg = state.turnGrid();
+        // var grid = grid_pkg.grid;
+        // row = row + grid_pkg.rowOffset;
+        // col = col + grid_pkg.colOffset;
+
         if (this.tileAt(row, col)) return false;
 
         var upLine = this.getColLine(row - 1, col);
