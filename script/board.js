@@ -11,9 +11,17 @@ var Board = function(boardSize, state) {
     //     this.grid[i] = new Array(boardSize);
     // }
     this.center = (boardSize + 1) / 2;
+    this.gridCache = {};
     this.gridTime = 0;
     this.grid = function(gh) {
+
         var start = +new Date();
+        var serial = _.flatten(gh).join('');
+        if (this.gridCache[serial]) {
+            var end = +new Date();
+            this.gridTime += (end - start);
+            return this.gridCache[serial];
+        }
         var rows = _.flatten(gh.map(function(x) {
                         if ( x[0] != 'exchange') {
                             return x.map(function(y) {
@@ -57,7 +65,39 @@ var Board = function(boardSize, state) {
         });
         var end = +new Date();
         this.gridTime += (end - start);
-        return { grid: newgrid, 'rowOffset': rowOffset, 'colOffset': colOffset };
+        var ret = { grid: newgrid, 'rowOffset': rowOffset, 'colOffset': colOffset };
+        this.gridCache[serial] = ret;
+        return ret;
+    }
+
+    this.rowMinMax = function(gh) {
+        var rows = _.flatten(gh.map(function(x) {
+                if ( x[0] != 'exchange') {
+                    return x.map(function(y) {
+                        return y[0];
+                    });
+                } else {
+                    return 0;
+                }
+            }));
+        return { max: Math.max.apply(null,  rows), 
+                min: Math.min.apply(null, rows) };
+    }
+
+    this.row = function(rowNum, tps) {
+        if (typeof tps == 'undefined') tps = state.tilePlacements();
+        
+        return tps.filter(function(tp) {
+            return tp[0] === rowNum;
+        });
+    }
+
+    this.column = function(colNum, tps) {
+        if (typeof tps == 'undefined') tps = state.tilePlacements();
+        
+        return tps.filter(function(tp) {
+            return tp[1] === colNum;
+        });
     }
 
     this.printTile = function(tile) {
@@ -156,58 +196,7 @@ var Board = function(boardSize, state) {
             console.log(row);
         };
         console.log('');
-        // var highRow = Math.max.apply(null, state.playableCache.map(function(x) { return x[0] })) + 1;
-        // var lowRow = Math.min.apply(null, state.playableCache.map(function(x) { return x[0] })) - 1;
-        // var highCol = Math.max.apply(null, state.playableCache.map(function(x) { return x[1] })) + 1;
-        // var lowCol = Math.min.apply(null, state.playableCache.map(function(x) { return x[1] })) -1;
-
-        // var row;
-        // var center = this.center;
-        // var grid = state.turnGrid();
-
-        // // if (offset) {
-        // //     var highRow = center + offset;
-        // //     var lowRow = center - offset;
-        // //     var highCol = center + offset;
-        // //     var lowCol = center - offset;            
-        // // } else {
-        // //     var highRow = Math.max.apply(null, state.playableCache.map(function(x) { return x[0] })) + 1;
-        // //     var lowRow = Math.min.apply(null, state.playableCache.map(function(x) { return x[0] })) - 1;
-        // //     var highCol = Math.max.apply(null, state.playableCache.map(function(x) { return x[1] })) + 1;
-        // //     var lowCol = Math.min.apply(null, state.playableCache.map(function(x) { return x[1] })) -1;
-
-        // // }
-        // var playable = state.playable();
-
-        // row = '    ';
-        // for (var j = lowCol; j <= highCol; j++) {
-        //     row += j < 100 ? j + ' ': j + '';
-        // }
-        // console.log(row);
-        // for (var i = lowRow; i <= highRow; i++) {
-        //     row = '';
-        //     for (var j = lowCol, row = row + i < 100 ? i + ' ': i + ''; j <= highCol; j++) {
-        //         var cell;
-        //         if ( grid[i][j] === undefined ) {
-        //             if ( this.coordsIn([i, j], playable) === -1 ) {
-        //                 cell = ' ';
-        //             } else {
-        //                 cell = clc.bgGreen(' ');
-        //             }
-        //         } else {
-        //             if ( this.coordsIn([i, j], state.turnHistory.length ? state.turnHistory : state.gameHistory[state.gameHistory.length - 1] ) === -1 ) {
-        //                 cell = this.printTile(grid[i][j]);
-        //             } else {
-        //                 cell = clc.bgWhite(this.printTile(grid[i][j]));
-        //             }
-        //         }
-        //         row += ' '; 
-        //         row += cell;
-        //         row += ' ';
-        //     };
-        //     console.log(row);
-        // };
-        // console.log('');
+  
     }
     this.equalCoords = function(coord1, coord2) {
         return coord1[0] === coord2[0] && coord1[1] === coord2[1];
@@ -288,6 +277,62 @@ var Board = function(boardSize, state) {
         return rowLine;
     }
 
+    this.linesAt = function(row, col, tps) {
+        var orig = this.tileAt(row, col);
+
+        if (typeof orig == 'undefined') return { row: [], col: [] };
+
+        var rowTps = this.row(row, tps);
+        var colTps = this.column(col, tps);
+        var rowLine = [orig];
+        var colLine = [orig];
+        var tile, minCol, maxCol, minRow, maxRow;
+
+        for (var i = 1; i < state.numTypes; i++) {
+            if (typeof maxCol == 'undefined') {
+                tile = this.tileAt(row, col + i, rowTps);
+                if (typeof tile != 'undefined') {
+                    rowLine.push(tile);
+                } else {
+                    maxCol = col + i;
+                }
+            }
+            if (typeof minCol == 'undefined') {
+                tile = this.tileAt(row, col - i, rowTps);
+                if (typeof tile != 'undefined') {
+                    rowLine.unshift(tile);
+                } else {
+                    minCol = col - i;
+                }
+            }
+            if (typeof maxRow == 'undefined') {
+                tile = this.tileAt(row + i, col, rowTps);
+                if (typeof tile != 'undefined') {
+                    colLine.push(tile);
+                } else {
+                    maxRow = row + i;
+                }
+            }
+            if (typeof minRow == 'undefined') {
+                tile = this.tileAt(row - i, col, rowTps);
+                if (typeof tile != 'undefined') {
+                    colLine.unshift(tile);
+                } else {
+                    minRow = row - i;
+                }
+            }
+        };
+        return {
+                rowLine: rowLine,
+                colLine: colLine,
+                rowUpperBound: [maxRow, col],
+                rowLowerBound: [minRow, col],
+                colUpperBound: [row, maxCol],
+                colLowerBound: [row, minCol],
+               }
+    }
+
+
     this.getLines = function(row, col, coords) {
         if (coords) {
             return this.getRowLine(row, col, true).concat(this.getColLine(row, col, true));
@@ -321,6 +366,9 @@ var Board = function(boardSize, state) {
 
         // var neighbors = this.getCoordNeighbors(row, col);
         var neighbors = this.getLines(row, col, true);
+
+        var testing = this.linesAt(row, col);
+        debugger;
         for (var i = neighbors.length - 1; i >= 0; i--) {
             if (this.coordsPlayable(neighbors[i][0], neighbors[i][1])) {
                 playableNeighbors.push(neighbors[i]);
@@ -353,16 +401,15 @@ var Board = function(boardSize, state) {
     //     };
     // }
 
-    this.tileAt = function(row,col) {
-        var history = state.gameHistory.concat([state.turnHistory]);
+    this.tileAt = function(row, col, tps) {
 
-        return history.filter(function(turn) {
-            return turn.filter(function(move) {
-                return move[0] === row && move[1] === col;}
-                ).length; 
-            }).length;
-        // var grid_pkg = state.turnGrid();
-        // return grid_pkg.grid[row + grid_pkg.rowOffset][col + ] !== undefined;
+        if (typeof tps == 'undefined') tps = state.tilePlacements();
+
+        var tp = _.flatten(tps.filter(function(tp) {
+                    return tp[0] === row && tp[1] === col;
+                }));
+
+        return tp.length ? tp[2] : undefined;
     }
 
 
@@ -381,8 +428,10 @@ var Board = function(boardSize, state) {
         state.turnHistory.push([row, col, tile]);
 
         var newLines = this.getLines(row, col);
+        // var testing = this.linesAt(row, col);
 
-
+        // debugger;
+        
         if ( !this.lineIsValid(newLines[0]) ) {
             state.turnHistory.pop();
             return false;
@@ -401,7 +450,7 @@ var Board = function(boardSize, state) {
         // row = row + grid_pkg.rowOffset;
         // col = col + grid_pkg.colOffset;
 
-        if (this.tileAt(row, col)) return false;
+        if (typeof this.tileAt(row, col) == 'undefined') return false;
 
         var upLine = this.getColLine(row - 1, col);
         var rightLine = this.getRowLine(row, col + 1);

@@ -82,6 +82,14 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
     // state.playableCache = [ [state.board.center, state.board.center] ];
     state.playableCache = [ [0, 0] ];
 
+    state.tilePlacements = function(gh) {
+        if (typeof gh == 'undefined') gh = this.gameHistory.concat([this.turnHistory]);
+        // if (!_.flatten(gh).length) return [];
+        return _.flatten(gh.filter(function(turn) {
+            return turn[0] != 'exchange';
+        }), 1);
+    }
+
     state.turnGrid = function() {
         if (!this.turnHistory.length) return this.board.grid(this.gameHistory);
 
@@ -121,7 +129,9 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
 
         var row = this.turnHistory[0][0];
         var col = this.turnHistory[0][1];
+        // var testing = this.board.linesAt(row, col);
 
+        // debugger;
         if (this.turnIsRow()) {
             return this.board.getRowLine(row, col, true);
         } else if (this.turnIsColumn()) {
@@ -362,7 +372,7 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
     state.endTurn = function() {
         // pass
     }
-    state.recurseCalls = 0;
+
     state.computerPlay = function(type) {
 
         var outer = this;

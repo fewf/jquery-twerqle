@@ -70,7 +70,7 @@ while (playTurn(g)) {
 	console.log(g.players.map(function(x) { return ' ' + x.tiles.length + ' ';}).join(','));
 }
 var end = +new Date();
-
+debugger;
 console.log('exec time: ' + (end - start));
 console.log('grid time: ' + g.board.gridTime);
 
