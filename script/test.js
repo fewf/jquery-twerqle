@@ -7,6 +7,7 @@ var g = twq.initState(['a', 'b', 'c'], [0, 0, 0], numTypes, 3);
 var twerqs = 0;
 var playTurn = function(state) {
 	// console.log(state.gameHistory.length +1);
+
 	var plyr = state.getCurrentPlayer();
 	plyr.selectedTiles = [];
 	var move = state.computerPlay(10);
@@ -55,16 +56,17 @@ plyr.endTurn(g);
 g.board.printBoard();
 
 playTurn(g);
+
 g.board.printBoard();
 	console.log(g.players.map(function(x) { return ' ' + x.score + ' ';}).join(','));
 	console.log(g.players.map(function(x) { return ' ' + x.tiles.length + ' ';}).join(','));
-
 // var move = g.computerPlay(10);
 // console.log(move);
 // console.log(g.playable());
 // console.log(g.playableCache);
 // debugger;
 while (playTurn(g)) {
+
 	g.board.printBoard();
 	console.log(g.players.map(function(x) { return ' ' + x.score + ' ';}).join(','));
 	console.log(g.players.map(function(x) { return ' ' + x.tiles.length + ' ';}).join(','));
@@ -74,7 +76,9 @@ debugger;
 console.log('exec time: ' + (end - start));
 console.log('grid time: ' + g.board.gridTime);
 
-
+console.log('called - cached')
+console.log(g.board.timesCalled);
+console.log(g.board.timesCached);
 
 
 

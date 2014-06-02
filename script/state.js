@@ -65,6 +65,7 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
     state.bag = _.shuffle(repeatElements(_.range(0,
                                             state.numTypes*state.numTypes),
                                          state.copies));
+    
 
     var players = [];
     for (var i = 0; i < playerNames.length; i++) {
@@ -82,12 +83,19 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
     // state.playableCache = [ [state.board.center, state.board.center] ];
     state.playableCache = [ [0, 0] ];
 
+    state.tilePlacementsCache = {};
     state.tilePlacements = function(gh) {
         if (typeof gh == 'undefined') gh = this.gameHistory.concat([this.turnHistory]);
-        // if (!_.flatten(gh).length) return [];
-        return _.flatten(gh.filter(function(turn) {
+        var serialize = JSON.stringify(gh);
+        if (serialize in this.tilePlacementsCache) return this.tilePlacementsCache[serialize];
+
+        var ret = _.flatten(gh.filter(function(turn) {
             return turn[0] != 'exchange';
-        }), 1);
+        }), 1).sort(function(a, b) {
+            return a[0] != b[0] ? a[0] - b[0] : a[1] != b[1] ? a[1] - b[1] : a[2] - b[2];
+        });
+        this.tilePlacementsCache[serialize] = ret;
+        return ret;
     }
 
     state.turnGrid = function() {
@@ -129,15 +137,16 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
 
         var row = this.turnHistory[0][0];
         var col = this.turnHistory[0][1];
-        // var testing = this.board.linesAt(row, col);
+
+        var lines = this.board.linesAt(row, col);
 
         // debugger;
         if (this.turnIsRow()) {
-            return this.board.getRowLine(row, col, true);
+            return lines.rowBounds;
         } else if (this.turnIsColumn()) {
-            return this.board.getColLine(row, col, true);
+            return lines.colBounds;
         } else {
-            return this.board.getLines(row, col, true);
+            return lines.rowBounds.concat(lines.colBounds);
         }
     }
 
@@ -147,23 +156,19 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
 
         if (!th.length) return [];
 
-
-        if (th.length === 1) return this.board.getLines(th[0][0], th[0][1]);
+        var lines = this.board.linesAt(th[0][0], th[0][1]);
+        if (th.length === 1) return [ lines.rowLine, lines.colLine ];
 
         if (this.turnIsRow()) {
             // mainline is row
-            return [this.board.getRowLine(th[0][0], th[0][1])].concat(
-                            th.map(function (x) {
-                                    return outer.board.getColLine(x[0], x[1]);
-                            })
-                        );
+            return th.map(function (x) {
+                                    return outer.board.linesAt(x[0], x[1]).colLine;
+                            }).concat([lines.rowLine]);
         } else {
             // mainline is col
-            return [this.board.getColLine(th[0][0], th[0][1])].concat(
-                            th.map(function (x) {
-                                    return outer.board.getRowLine(x[0], x[1]);
-                            })
-                        );
+            return th.map(function (x) {
+                                    return outer.board.linesAt(x[0], x[1]).rowLine;
+                            }).concat([lines.colLine]);
         }
 
     }
@@ -347,7 +352,7 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
         player.drawTiles(state, this.turnHistory.length);
         var turnPush = this.gameHistory[this.gameHistory.push([]) - 1];
         while (this.turnHistory.length) {
-            var move = this.turnHistory.pop();
+            var move = this.turnHistory.shift();
             turnPush.push(move);
             var row = move[0];
             var col = move[1];
@@ -374,7 +379,7 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
     }
 
     state.computerPlay = function(type) {
-
+        // debugger;
         var outer = this;
         var plyr = this.getCurrentPlayer();
 
@@ -395,8 +400,7 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
 
 
         function recurse_optimize_score(rack, string, lastMove) {
-            
-            outer.recurseCalls++;
+
             // console.log('enter with rack: ' + outer.board.printTiles(rack));
             // console.log(outer.board.printTiles(rack));
             var playables = outer.playable();
