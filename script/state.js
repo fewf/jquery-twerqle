@@ -103,8 +103,7 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
             return turn[0] != 'exchange';
         }), 1).sort(function(a, b) {
             // sorts by row. if rows are equal, sorts by column.
-            // [ [4, -1, 23] ]
-            return a[0] != b[0] ? a[0] - b[0] : a[1] != b[1] ? a[1] - b[1] : a[2] - b[2];
+            return a[0] != b[0] ? a[0] - b[0] : a[1] - b[1];
         });
         this.tilePlacementsCache[serialize] = ret;
         return ret;

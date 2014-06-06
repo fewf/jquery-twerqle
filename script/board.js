@@ -5,11 +5,26 @@ var colors = [clc.red, clc.blue, clc.green, clc.yellow, clc.magenta, clc.cyan, c
 var shapes = [ '@', '#', '$', '%', '&', '*', "+", "=", "?", "\\", "8", "Z" ];
 
 
-// var TilePlacement = function(row, column, tile) {
-//     this.row = row;
-//     this.column = column;
-//     this.tile = tile;
-// }
+var TilePlacement = function(row, column, tile) {
+    this.row = row;
+    this.column = column;
+    this.tile = tile;
+}
+
+var LineTilePlacements = function(tps, colElseRow, lineIndex) {
+    this.orientation: colElseRow ? 'column' : 'row';
+    this.index = lineIndex;
+    this.lineTilePlacements = tps.map(function(tp) { 
+        return [tp[Number(colElseRow)], tp[2]];
+    });
+}
+
+LineTilePlacements.prototype.toTilePlacements = function() {
+    
+    return this.map(function(ltps) {
+
+    })
+}
 
 var Board = function(state) {
 
@@ -72,9 +87,13 @@ var Board = function(state) {
     this.row = function(rowNum, tps) {
         if (typeof tps == 'undefined') tps = state.tilePlacements();
         
-        return tps.filter(function(tp) {
+        return {
+                row: rowNum,
+                
+                tpstps.filter(function(tp) {
             return tp[_row] === rowNum;
-        });
+        }).;
+                }
     }
 
     this.column = function(colNum, tps) {
@@ -153,62 +172,66 @@ var Board = function(state) {
         return -1;
     }
 
-    this.getColLine = function(row, col, coords) {
+    this.lineAt = function(startIndex, colElseRow, tps) {
+        var lookup = Number(colElseRow);
+        var min, max, tile, line = [];
+        var i = 1;
 
-        var grid_pkg = state.turnGrid();
-        var grid = grid_pkg.grid;
-
-        row = row + grid_pkg.rowOffset;
-        col = col + grid_pkg.colOffset;
-
-        if (grid[row][col] === undefined) {
-            return [];
+        while (typeof min == 'undefined') {
+            tile = this.tileAt(colElseRow ? row - i : row, colElseRow ? col : col - 1, tps);
+            if (typeof tile != 'undefined') {
+                rowLine.unshift(tile);
+                i++;
+            } else {
+                minCol = col - i;
+            }
         }
 
-        var minRow = row;
-        var maxRow = row;
+        i = 1;
 
-        var colLine = [];
-        for (var i = 0; grid[row - i][col] !== undefined; i++) {
-            colLine.unshift(grid[row-i][col]);
-            minRow = row - i;
-        };
-        for (var i = 1; grid[row + i][col] !== undefined; i++) {
-            colLine.push(grid[row + i][col]);
-            maxRow = row + i;
-        };
-        if (coords) {
-            return [ [minRow - grid_pkg.rowOffset - 1, col - grid_pkg.colOffset], [maxRow - grid_pkg.rowOffset + 1, col - grid_pkg.colOffset] ];
+        while (typeof max == 'undefined') {
+            tile = this.tileAt(row, col + i, rowTps);
+            if (typeof tile != 'undefined') {
+                rowLine.push(tile);
+            } else {
+                maxCol = col + i;
+            }            
         }
-        return colLine;
-    }
 
-    this.getRowLine = function(row, col, coords) {
-        // if optional coords set to true, will return
-        // array of surrounding empty coords
-
-        var grid_pkg = state.turnGrid();
-        var grid = grid_pkg.grid;
-        row = row + grid_pkg.rowOffset;
-        col = col + grid_pkg.colOffset;
-
-        if (grid[row][col] === undefined) return [];
-
-        var minCol = col;
-        var maxCol = col;
-        var rowLine = [];
-        for (var i = 0; grid[row][col - i] !== undefined; i++) {
-            rowLine.unshift(grid[row][col-i]);
-            minCol = col - i;
+        for (var i = 1; typeof min == 'undefined' || typeof max == 'undefined'; i++) {
+            if (typeof maxCol == 'undefined') {
+                tile = this.tileAt(row, col + i, rowTps);
+                if (typeof tile != 'undefined') {
+                    rowLine.push(tile);
+                } else {
+                    maxCol = col + i;
+                }
+            }
+            if (typeof minCol == 'undefined') {
+                tile = this.tileAt(row, col - i, rowTps);
+                if (typeof tile != 'undefined') {
+                    rowLine.unshift(tile);
+                } else {
+                    minCol = col - i;
+                }
+            }
+            if (typeof maxRow == 'undefined') {
+                tile = this.tileAt(row + i, col, colTps);
+                if (typeof tile != 'undefined') {
+                    colLine.push(tile);
+                } else {
+                    maxRow = row + i;
+                }
+            }
+            if (typeof minRow == 'undefined') {
+                tile = this.tileAt(row - i, col, colTps);
+                if (typeof tile != 'undefined') {
+                    colLine.unshift(tile);
+                } else {
+                    minRow = row - i;
+                }
+            }
         };
-        for (var i = 1; grid[row][col + i] !== undefined; i++) {
-            rowLine.push(grid[row][col + i]);
-            maxCol = col + i;
-        };
-        if (coords) {
-            return [ [row - grid_pkg.rowOffset, minCol - grid_pkg.colOffset - 1], [row - grid_pkg.rowOffset, maxCol - grid_pkg.colOffset + 1] ];
-        }
-        return rowLine;
     }
 
     this.linesAtCache = {};
