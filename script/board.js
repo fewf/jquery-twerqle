@@ -5,29 +5,31 @@ var colors = [clc.red, clc.blue, clc.green, clc.yellow, clc.magenta, clc.cyan, c
 var shapes = [ '@', '#', '$', '%', '&', '*', "+", "=", "?", "\\", "8", "Z" ];
 
 
-var TilePlacement = function(row, column, tile) {
-    this.row = row;
-    this.column = column;
-    this.tile = tile;
-}
+// var TilePlacement = function(row, column, tile) {
+//     this.row = row;
+//     this.column = column;
+//     this.tile = tile;
+// }
 
-var LineTilePlacements = function(tps, colElseRow, lineIndex) {
-    this.orientation: colElseRow ? 'column' : 'row';
-    this.index = lineIndex;
-    this.lineTilePlacements = tps.map(function(tp) { 
-        return [tp[Number(colElseRow)], tp[2]];
-    });
-}
+// var LineTilePlacements = function(tps, colElseRow, lineIndex) {
+//     this.orientation: colElseRow ? 'column' : 'row';
+//     this.index = lineIndex;
+//     this.lineTilePlacements = tps.map(function(tp) { 
+//         return [tp[Number(colElseRow)], tp[2]];
+//     });
+// }
 
-LineTilePlacements.prototype.toTilePlacements = function() {
+// LineTilePlacements.prototype.toTilePlacements = function() {
     
-    return this.map(function(ltps) {
+//     return this.map(function(ltps) {
 
-    })
-}
+//     })
+// }
 
 var Board = function(state) {
-
+    var _row = 0;
+    var _col = _column = 1;
+    var _tile = 2;
 
     this.gridCache = { timesCalled: 0 };
     this.grid = function(tps, padding) {
@@ -87,13 +89,9 @@ var Board = function(state) {
     this.row = function(rowNum, tps) {
         if (typeof tps == 'undefined') tps = state.tilePlacements();
         
-        return {
-                row: rowNum,
-                
-                tpstps.filter(function(tp) {
+        return tps.filter(function(tp) {
             return tp[_row] === rowNum;
-        }).;
-                }
+        })
     }
 
     this.column = function(colNum, tps) {
@@ -353,11 +351,11 @@ var Board = function(state) {
 
         if (typeof tps == 'undefined') tps = state.tilePlacements();
 
-        var tp = _.flatten(tps.filter(function(tp) {
+        var tp = _.find(tps, function(tp) {
                     return tp[_row] === row && tp[_column] === col;
-                }));
+                });
 
-        return tp.length ? tp[2] : undefined;
+        return tp ? tp[2] : undefined;
     }
 
 
