@@ -2,26 +2,27 @@ var twq = require('./state');
 var clc = require('cli-color');
 var _ = require('underscore');
 var numTypes = 6;
+var copies = 3;
 
-var g = twq.initState(['a', 'b', 'c'], [0, 0, 0], numTypes, 3);
-var twerqs = 0;
 var playTurn = function(state) {
 	// console.log(state.gameHistory.length +1);
 
 	var plyr = state.getCurrentPlayer();
 	plyr.selectedTiles = [];
-	var move = state.computerPlay(10);
+	// var timetocheck = state.turn() === 10;
+
+	var move = state.computerPlay(state.turn() % 2);
+	// var move = state.computerPlay();
 	if (move[0] === 'play') {
 		
-		var moves = move[1];
-		for (var i = 0; i < moves.length; i += 3) {
-			plyr.selectTile(state, Number(moves[i])).placeSelectedTile(state, Number(moves[i + 1]), Number(moves[i + 2]));
-		};
+		g.turnHistory = move[1];
+		// console.log(g.turnHistory);
+
 		var gameOver = state.gameOver();
 
 		var lines = state.moveLines();
 
-		twerqs += lines.filter(function(x) { return x.length === numTypes; }).length;
+		// twerqs += lines.filter(function(x) { return x.length === numTypes; }).length;
 
 		plyr.endTurn(g);
 		return !gameOver;
@@ -35,36 +36,77 @@ var playTurn = function(state) {
 		return true;
 	}
 }
+// REPEAT CODE
+// var reps = 500;
+// var i = 0;
+// var skip = false;
+// var player1score = 0;
+// var player2score = 0;
+// var player1wins = 0;
+// var player2wins = 0;
+// var start = +new Date();
+// while (i < reps) {
+// 	var g = twq.initState(['a', 'b'], [0, 0], numTypes, 3);	
 
-var plyr = g.getCurrentPlayer();
-var first_move = g.computerPlay(10);
-console.log(plyr.tiles);
-console.log(first_move);
-var moves = first_move[1];
-var grid;
+// 	while (playTurn(g)) {
+// 		if (g.turn() > 80) {
+// 			skip = true;
+// 			break;
+// 		}
+// 		// g.board.printBoard();
+// 		// console.log(g.players.map(function(x) { return ' ' + x.score + ' ';}).join(','));
+// 		// console.log(g.players.map(function(x) { return ' ' + x.tiles.length + ' ';}).join(','));
+// 	}
+// 	if (!skip) {
+// 		i++;
+
+// 		player1score += g.players[0].score;
+// 		player2score += g.players[1].score;
+// 		if (g.players[0].score >= g.players[1].score) {
+// 			player1wins++;
+// 		} 
+// 		if (g.players[1].score >= g.players[0].score) {
+// 			player2wins++;
+// 		}
+// 		console.log('finished game ' + i);
+// 		console.log('optimize wins ' + player1wins + ' (' + (Math.round((player1wins/i) * 100)) + '%) avg-score: ' + player1score);
+// 		console.log('avoider wins ' + player2wins + ' (' + (Math.round((player2wins/i) * 100)) + '%) avg-score: ' + player2score);
+
+// 	} else {
+// 		skip = false;
+// 	}
+// }
+// var end = +new Date();
+// console.log('exec time: ' + (end - start));
+// console.log('player 1 score: ' + player1score);
+// console.log('player 2 score: ' + player2score);
+
+// END REPEAT CODE
+
+
+var g = twq.initState(['a', 'b'], [0, 0], numTypes, copies);	
+// var plyr = g.getCurrentPlayer();
+// var first_move = g.computerPlay(10);
+// console.log(plyr.tiles);
+// console.log(first_move);
+// var moves = first_move[1];
+// var grid;
 
 
 var start = +new Date();
-for (var i = 0; i < moves.length; i += 3) {
-	plyr.selectTile(g, Number(moves[i])).placeSelectedTile(g, Number(moves[i + 1]), Number(moves[i + 2]));
 
-	g.board.printBoard();
-	console.log(g.turnHistory);
-	console.log(g.playable());
-};
-plyr.endTurn(g);
+playTurn(g);
 g.board.printBoard();
 
 playTurn(g);
-
 g.board.printBoard();
-	console.log(g.players.map(function(x) { return ' ' + x.score + ' ';}).join(','));
-	console.log(g.players.map(function(x) { return ' ' + x.tiles.length + ' ';}).join(','));
-// var move = g.computerPlay(10);
-// console.log(move);
-// console.log(g.playable());
-// console.log(g.playableCache);
-// debugger;
+
+// playTurn(g);
+
+// g.board.printBoard();
+// console.log(g.players.map(function(x) { return ' ' + x.score + ' ';}).join(','));
+// console.log(g.players.map(function(x) { return ' ' + x.tiles.length + ' ';}).join(','));
+
 while (playTurn(g)) {
 
 	g.board.printBoard();
@@ -72,16 +114,16 @@ while (playTurn(g)) {
 	console.log(g.players.map(function(x) { return ' ' + x.tiles.length + ' ';}).join(','));
 }
 var end = +new Date();
-debugger;
+// g.board.printBoard();
+// console.log(g.players.map(function(x) { return ' ' + x.score + ' ';}).join(','));
+// console.log(g.players.map(function(x) { return ' ' + x.tiles.length + ' ';}).join(','));
 console.log('exec time: ' + (end - start));
-console.log('grid time: ' + g.board.gridTime);
+// console.log('grid calls: ' + g.board.gridCache.timesCalled);
+// console.log(g.players);
 
-console.log('called - cached')
-console.log(g.board.timesCalled);
-console.log(g.board.timesCached);
-
-
-
+// console.log('turn 42');
+// var turn42 = g.board.grid(g.tilePlacements(g.gameHistory.slice(0, 42)));
+// g.board.printBoard(turn42);
 
 
 

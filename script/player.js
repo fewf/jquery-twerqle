@@ -90,17 +90,6 @@ Player.prototype.hasTiles = function(tiles) {
 Player.prototype.isActive = function(state) {
     return state.getCurrentPlayer() === this;
 }
-// Player.prototype.turnTiles = function(state) {
-//     if (!this.isActive(state) || !state.turnHistory.length) return this.tiles;
-
-//     var rackCopy = this.tiles.slice(0);
-//     var tile;
-//     for (var i = 0; i < state.turnHistory.length; i++) {
-//         tile = state.turnHistory[i][2];
-//         rackCopy.splice(rackCopy.indexOf(tile), 1);
-//     };
-//     return rackCopy;
-// }
 
 Player.prototype.drawTiles = function(state, count) {
     // can't send state.bag directly, mutation won't take.

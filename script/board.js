@@ -5,51 +5,47 @@ var colors = [clc.red, clc.blue, clc.green, clc.yellow, clc.magenta, clc.cyan, c
 var shapes = [ '@', '#', '$', '%', '&', '*', "+", "=", "?", "\\", "8", "Z" ];
 
 
-var Board = function(boardSize, state) {
-    // this.grid = new Array(boardSize);
-    // for (var i = 0; i < boardSize; i++) {
-    //     this.grid[i] = new Array(boardSize);
-    // }
-    this.center = (boardSize + 1) / 2;
-    this.gridCache = {};
-    this.gridTime = 0;
-    this.grid = function(gh) {
+// var TilePlacement = function(row, column, tile) {
+//     this.row = row;
+//     this.column = column;
+//     this.tile = tile;
+// }
 
-        var start = +new Date();
-        var serial = _.flatten(gh).join('');
+var Board = function(state) {
+
+
+    this.gridCache = { timesCalled: 0 };
+    this.grid = function(tps, padding) {
+        this.gridCache.timesCalled++;
+        // default tile placements include turn tile placements
+        if (typeof tps == 'undefined') tps = state.tilePlacements();
+
+        // padding describes how many empty rows and columns to pad grid with, if any
+        if (typeof padding != 'number') padding = 2;
+
+        // get from cache if cached
+        var serial = JSON.stringify(tps);
         if (this.gridCache[serial]) {
-            var end = +new Date();
-            this.gridTime += (end - start);
             return this.gridCache[serial];
         }
-        var rows = _.flatten(gh.map(function(x) {
-                        if ( x[0] != 'exchange') {
-                            return x.map(function(y) {
-                                return y[0];
-                            });
-                        } else {
-                            return 0;
-                        }
-                    }));
-        var cols = _.flatten(gh.map(function(x) {
-                        if ( x[0] != 'exchange') {
-                            return x.map(function(y) {
-                                return y[1];
-                            });
-                        } else {
-                            return 0;
-                        }
-                    }));
 
-        var highRow = Math.max.apply(null, rows.length ? rows : [0]) + 2;
-        var lowRow = Math.min.apply(null, rows.length ? rows : [0]) - 2;
-        var highCol = Math.max.apply(null, cols.length? cols : [0]) + 2;
-        var lowCol = Math.min.apply(null, cols.length? cols : [0]) - 2;
+        // debugger;
+        // takes advantage of the fact that tps are sorted by row
+        var highRow = tps.length ? tps[tps.length - 1][_row] : 0;
+        var lowRow = tps.length ? tps[0][_row] : 0;
 
-        var rowCount = highRow - lowRow + 1;
-        var rowOffset = lowRow * -1;
-        var colCount = highCol - lowCol + 1;
-        var colOffset = lowCol * -1;
+        // get sorted list of cols in play
+        var cols = tps.map(function(tp) { return tp[_col]; }).sort(function(a, b) { return a - b; });
+
+        var highCol = cols.length ? cols[cols.length - 1] : 0;
+        var lowCol = cols.length ? cols[0] : 0;
+
+
+        var rowCount = (highRow - lowRow + 1) + padding * 2;
+        var rowOffset = (lowRow - padding) * -1;
+
+        var colCount = (highCol - lowCol + 1) + padding * 2;
+        var colOffset = (lowCol - padding) * -1;
 
         var newgrid = new Array(rowCount);
 
@@ -57,38 +53,27 @@ var Board = function(boardSize, state) {
             newgrid[i] = new Array(colCount);
         };
 
-        gh.map(function(turnHistory) {
-            if (turnHistory[0] == 'exchange') return;
-            turnHistory.map(function(move) {
-                newgrid[move[0] + rowOffset][move[1] + colOffset] = move[2]
-            });
+        // project tile placements onto our new grid
+        tps.map(function(tp) {
+            newgrid[tp[_row] + rowOffset][tp[_col] + colOffset] = tp[2];
         });
-        var end = +new Date();
-        this.gridTime += (end - start);
-        var ret = { grid: newgrid, 'rowOffset': rowOffset, 'colOffset': colOffset };
-        this.gridCache[serial] = ret;
-        return ret;
-    }
 
-    this.rowMinMax = function(gh) {
-        var rows = _.flatten(gh.map(function(x) {
-                if ( x[0] != 'exchange') {
-                    return x.map(function(y) {
-                        return y[0];
-                    });
-                } else {
-                    return 0;
-                }
-            }));
-        return { max: Math.max.apply(null,  rows), 
-                min: Math.min.apply(null, rows) };
+        // cache it
+
+        var ret = { grid: newgrid, 'rowOffset': rowOffset, 'colOffset': colOffset };
+
+                // debugger;
+        this.gridCache[serial] = ret;
+
+
+        return ret;
     }
 
     this.row = function(rowNum, tps) {
         if (typeof tps == 'undefined') tps = state.tilePlacements();
         
         return tps.filter(function(tp) {
-            return tp[0] === rowNum;
+            return tp[_row] === rowNum;
         });
     }
 
@@ -96,16 +81,17 @@ var Board = function(boardSize, state) {
         if (typeof tps == 'undefined') tps = state.tilePlacements();
         
         return tps.filter(function(tp) {
-            return tp[1] === colNum;
+            return tp[_col] === colNum;
         });
     }
 
-    this.printTile = function(tile) {
+    this.printTile = function(tile, bgColor) {
         if (typeof tile != 'number') return ' ';
-        if ( typeof tile != 'number' || (tile < 0 || tile > state.numTypes*state.numTypes)) return '_'
+        if ( tile < 0 || tile > state.numTypes*state.numTypes) return ' '
         var color = state.getColor(tile);
         var shape = state.getShape(tile);
 
+        if (typeof bgColor == 'function') return bgColor(colors[color](shapes[shape]));
         return colors[color](shapes[shape]);
     }
 
@@ -114,84 +100,41 @@ var Board = function(boardSize, state) {
         // var printTile = this.printTile;
         return tiles.map(function(x) { return state.board.printTile(x); }).join(' ');
     }
-    this.minimPrintBoard = function(offset) {
 
-        var highRow = Math.max.apply(null, state.playableCache.map(function(x) { return x[0] })) + 1;
-        var lowRow = Math.min.apply(null, state.playableCache.map(function(x) { return x[0] })) - 1;
-        var highCol = Math.max.apply(null, state.playableCache.map(function(x) { return x[1] })) + 1;
-        var lowCol = Math.min.apply(null, state.playableCache.map(function(x) { return x[1] })) -1;
-
-        var row;
-        var center = this.center;
-        var grid = state.turnGrid();
-
-        // if (offset) {
-        //     var highRow = center + offset;
-        //     var lowRow = center - offset;
-        //     var highCol = center + offset;
-        //     var lowCol = center - offset;            
-        // } else {
-        //     var highRow = Math.max.apply(null, state.playableCache.map(function(x) { return x[0] })) + 1;
-        //     var lowRow = Math.min.apply(null, state.playableCache.map(function(x) { return x[0] })) - 1;
-        //     var highCol = Math.max.apply(null, state.playableCache.map(function(x) { return x[1] })) + 1;
-        //     var lowCol = Math.min.apply(null, state.playableCache.map(function(x) { return x[1] })) -1;
-
-        // }
-        var playable = state.playable();
-
-        for (var i = lowRow; i <= highRow; i++) {
-            row = '';
-            for (var j = lowCol; j <= highCol; j++) {
-                var cell;
-                if ( grid[i][j] === undefined ) {
-                    if ( this.coordsIn([i, j], playable) === -1 ) {
-                        cell = ' ';
-                    } else {
-                        cell = clc.bgGreen(' ');
-                    }
-                } else {
-                    if ( this.coordsIn([i, j], playedTiles) === -1 ) {
-                        cell = this.printTile(grid[i][j]);
-                    } else {
-                        cell = clc.bgWhite(this.printTile(grid[i][j]));
-                    }
-                }
-                row += cell;
-            };
-            console.log(row);
-        };
-        console.log('');
-    }
-
-    this.printBoard = function(offset) {
-        var grid_pkg = state.turnGrid();
+    this.printBoard = function(grid_pkg) {
+        if (typeof grid_pkg == 'undefined') grid_pkg = state.turnGrid();
         var grid = grid_pkg.grid;
         row = '   ';
         var colNum;
         var rowNum;
-        for (var i = 0; i < grid[0].length; i++) {
-            colNum = i - grid_pkg.colOffset;
-            row += new Array(4 - String(colNum).length).join(' ');
-            row += colNum;
-        };
+
+        // add columns index
+        // for (var i = 0; i < grid[0].length; i++) {
+        //     colNum = i - grid_pkg.colOffset;
+        //     row += new Array(4 - String(colNum).length).join(' ');
+        //     row += colNum;
+        // };
 
         console.log(row);
 
         for (var i = 0; i < grid.length; i++) {
             row = '';
             rowNum = i - grid_pkg.rowOffset;
-            row += rowNum;
-            row += new Array(4 - String(rowNum).length).join(' ');
+            // row += rowNum;
+            // row += new Array(4 - String(rowNum).length).join(' ');
             for (var j = 0; j < grid[0].length; j++) {
                 var cell;
                 if ( grid[i][j] === undefined ) {
                     cell = ' ';
+                } else if (this.coordsIn([rowNum, j - grid_pkg.colOffset], state.turnHistory) != -1) {
+                    cell = state.board.printTile(grid[i][j], clc.bgGreen);
+                } else if (this.coordsIn([rowNum, j - grid_pkg.colOffset], state.gameHistory[state.gameHistory.length - 1]) != -1) {
+                    cell = state.board.printTile(grid[i][j], clc.bgWhite);
                 } else {
                     cell = state.board.printTile(grid[i][j]);
                 }
-                row += '  '; 
+                // row += '  '; 
                 row += cell;
-                // row += ' ';
             };
             console.log(row);
         };
@@ -199,7 +142,7 @@ var Board = function(boardSize, state) {
   
     }
     this.equalCoords = function(coord1, coord2) {
-        return coord1[0] === coord2[0] && coord1[1] === coord2[1];
+        return coord1[_row] === coord2[_row] && coord1[_col] === coord2[_col];
     }
 
     this.coordsIn = function(needle, haystack) {
@@ -211,9 +154,6 @@ var Board = function(boardSize, state) {
     }
 
     this.getColLine = function(row, col, coords) {
-        // if optional coords set to true, will return
-        // array of surrounding empty coords
-        //console.log(state.turnGrid()[91][91]);
 
         var grid_pkg = state.turnGrid();
         var grid = grid_pkg.grid;
@@ -221,15 +161,9 @@ var Board = function(boardSize, state) {
         row = row + grid_pkg.rowOffset;
         col = col + grid_pkg.colOffset;
 
-
-        if (grid[row] === undefined) {
-            debugger;
-        }
         if (grid[row][col] === undefined) {
             return [];
         }
-
-
 
         var minRow = row;
         var maxRow = row;
@@ -277,24 +211,19 @@ var Board = function(boardSize, state) {
         return rowLine;
     }
 
-    // this.linesAt = _.memoize(this.linesAtLogic); 
-    this.timesCached = 0;
-    this.timesCalled = 0;
     this.linesAtCache = {};
     this.linesAt = function(row, col, tps) {
-        this.timesCalled++;
         if (typeof tps == 'undefined') tps = state.tilePlacements();
 
-        var serialize = JSON.stringify(tps);
+        var serialize = JSON.stringify(tps) + 'r' + row + 'c' + col;
 
         if (serialize in this.linesAtCache) {
             return this.linesAtCache[serialize];
         }
 
+        var orig = this.tileAt(row, col, tps);
 
-        var orig = this.tileAt(row, col);
-
-        if (typeof orig == 'undefined') return { row: [], col: [] };
+        if (typeof orig == 'undefined') return { rowLine: [], colLine: [] };
 
         var rowTps = this.row(row, tps);
         var colTps = this.column(col, tps);
@@ -339,12 +268,7 @@ var Board = function(boardSize, state) {
                 }
             }
         };
-        if (typeof minRow == 'undefined' ||
-            typeof maxRow == 'undefined' ||
-            typeof minCol == 'undefined' ||
-            typeof maxCol == 'undefined') {
-            debugger;
-        }
+
         var ret = {
                 rowLine: rowLine,
                 colLine: colLine,
@@ -387,53 +311,27 @@ var Board = function(boardSize, state) {
         var playableNeighbors = [];
         var unplayableNeighbors = [];
 
-        // var neighbors = this.getCoordNeighbors(row, col);
-        // var neighbors = this.getLines(row, col, true);
-
         var lines = this.linesAt(row, col);
 
         var neighbors = lines.colBounds.concat(lines.rowBounds);
 
-
-        // debugger;
         for (var i = neighbors.length - 1; i >= 0; i--) {
-            if (this.coordsPlayable(neighbors[i][0], neighbors[i][1])) {
+            if (this.coordsPlayable(neighbors[i][_row], neighbors[i][_column])) {
                 playableNeighbors.push(neighbors[i]);
             } else {
                 unplayableNeighbors.push(neighbors[i]);
             }
         };
 
-        return [ playableNeighbors, unplayableNeighbors ];
+        return { playable: playableNeighbors, unplayable: unplayableNeighbors };
     }
-
-    // this.getCoordNeighbors = function(row, col) {
-    //     var neighbors =     [
-    //                             [row + 1, col], [row - 1, col], 
-    //                             [row, col + 1], [row, col - 1]
-    //                         ];
-    //     return neighbors;                    
-    //     // return neighbors.filter( function(x) { 
-    //     //         return x[0] > 0 && x[0] < this.board.grid.length &&
-    //     //                     x[1] > 0 && x[1] < this.board.grid.length;
-    //     //     ;});
-    // }
-
-
-
-    // this.hasNeighbor = function(row, col) {
-    //     var neighbors = this.getCoordNeighbors(row, col);
-    //     for (var i = neighbors.length - 1; i >= 0; i--) {
-    //         if (this.tileAt(neighbors[i][0], neighbors[i][1])) return true;
-    //     };
-    // }
 
     this.tileAt = function(row, col, tps) {
 
         if (typeof tps == 'undefined') tps = state.tilePlacements();
 
         var tp = _.flatten(tps.filter(function(tp) {
-                    return tp[0] === row && tp[1] === col;
+                    return tp[_row] === row && tp[_column] === col;
                 }));
 
         return tp.length ? tp[2] : undefined;
@@ -448,37 +346,31 @@ var Board = function(boardSize, state) {
             console.log(state.playable());
             return false;
         }
-        state.turnHistory.push([row, col, tile]);
+        
+        var tps = state.tilePlacements(state.gameHistory.concat([
+            state.turnHistory.concat([
+                [row, col, tile]
+            ])
+        ]));
 
-        var newLines = this.linesAt(row, col);
-        // var testing = this.linesAt(row, col);
+        var newLines = this.linesAt(row, col, tps);
 
-        // debugger;
-
-        if ( !this.lineIsValid(newLines.rowLine) ) {
-            state.turnHistory.pop();
+        if ( !this.lineIsValid(newLines.rowLine) ||
+             !this.lineIsValid(newLines.colLine) ) {
             return false;
         }
-        if ( !this.lineIsValid(newLines.colLine) ) {
-            state.turnHistory.pop();
-            return false;
-        }
-        state.turnHistory.pop();
+        
         return true;
     }
 
     this.coordsPlayable = function(row, col) {
-        // var grid_pkg = state.turnGrid();
-        // var grid = grid_pkg.grid;
-        // row = row + grid_pkg.rowOffset;
-        // col = col + grid_pkg.colOffset;
 
         if (typeof this.tileAt(row, col) != 'undefined') return false;
 
-        var upLine = this.getColLine(row - 1, col);
-        var rightLine = this.getRowLine(row, col + 1);
-        var downLine = this.getColLine(row + 1, col);
-        var leftLine = this.getRowLine(row, col - 1);
+        var upLine = this.linesAt(row - 1, col).colLine;
+        var rightLine = this.linesAt(row, col + 1).rowLine;
+        var downLine = this.linesAt(row + 1, col).colLine;
+        var leftLine = this.linesAt(row, col - 1).rowLine;
 
 
         //length test
@@ -498,16 +390,12 @@ var Board = function(boardSize, state) {
 
 
     this.lineHasShape = function(line, shape) {
-        for (var i = line.length - 1; i >= 0; i--) {
-            if (state.getShape(line[i]) === shape) return true;
-        };
+        if (state.getShape(line[0]) === shape) return true;
         return false;
     }
 
     this.lineHasColor = function(line, color) {
-        for (var i = line.length - 1; i >= 0; i--) {
-            if (state.getColor(line[i]) === color) return true;
-        };
+        if (state.getColor(line[0]) === color) return true;
         return false;
     }
  
