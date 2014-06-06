@@ -5,26 +5,59 @@ var colors = [clc.red, clc.blue, clc.green, clc.yellow, clc.magenta, clc.cyan, c
 var shapes = [ '@', '#', '$', '%', '&', '*', "+", "=", "?", "\\", "8", "Z" ];
 
 
-var TilePlacement = function(row, column, tile) {
-    this.row = row;
-    this.column = column;
+var Coordinates = function(x, y) {
+    this.x = x;
+    this.y = y;
+}
+
+Coordinates.prototype.row = function() { return this.y; }
+Coordinates.prototype.column = function() { return this.x; }
+Coordinates.prototype.neighbor = function(dir) {
+    var newX = this.x + (1 * dir === 'left' ? -1 : dir === 'right' ? 1 : 0);
+    var newY = this.y + (1 * dir === 'up' ? -1 : dir === 'down' ? 1 : 0);
+    return new Coordinates(newX, newY); 
+}
+Coordinates.prototype.neighbors = function() {
+    return [
+            this.neighbor('up'),
+            this.neighbor('right'),
+            this.neighbor('down'),
+            this.neighbor('left')
+           ]
+}
+
+Coordinates.prototype.equals = function(coords) {
+    return this.x === coords.x && this.y === coords.y;
+}
+
+Coordinates.prototype.in = function(coords_array) {
+    for (var i = 0; i < coords_array.length; i++) {
+        if (this.equals(coords_array[i]) {
+            return i;
+        }
+    };
+    return -1;
+}
+
+var TilePlacement = function(coords, tile) {
+    this.coords = coords;
     this.tile = tile;
 }
 
-var LineTilePlacements = function(tps, colElseRow, lineIndex) {
-    this.orientation: colElseRow ? 'column' : 'row';
-    this.index = lineIndex;
-    this.lineTilePlacements = tps.map(function(tp) { 
-        return [tp[Number(colElseRow)], tp[2]];
-    });
-}
+// var LineTilePlacements = function(tps, colElseRow, lineIndex) {
+//     this.orientation: colElseRow ? 'column' : 'row';
+//     this.index = lineIndex;
+//     this.lineTilePlacements = tps.map(function(tp) { 
+//         return [tp[Number(colElseRow)], tp[2]];
+//     });
+// }
 
-LineTilePlacements.prototype.toTilePlacements = function() {
-    
-    return this.map(function(ltps) {
+// LineTilePlacements.prototype.toTilePlacements = function() {
 
-    })
-}
+//     return this.map(function(ltps) {
+
+//     })
+// }
 
 var Board = function(state) {
 
@@ -46,11 +79,11 @@ var Board = function(state) {
 
         // debugger;
         // takes advantage of the fact that tps are sorted by row
-        var highRow = tps.length ? tps[tps.length - 1][_row] : 0;
-        var lowRow = tps.length ? tps[0][_row] : 0;
+        var highRow = tps.length ? tps[tps.length - 1].row() : 0;
+        var lowRow = tps.length ? tps[0].row() : 0;
 
         // get sorted list of cols in play
-        var cols = tps.map(function(tp) { return tp[_col]; }).sort(function(a, b) { return a - b; });
+        var cols = tps.map(function(tp) { return tp.column(); }).sort(function(a, b) { return a - b; });
 
         var highCol = cols.length ? cols[cols.length - 1] : 0;
         var lowCol = cols.length ? cols[0] : 0;
@@ -70,7 +103,7 @@ var Board = function(state) {
 
         // project tile placements onto our new grid
         tps.map(function(tp) {
-            newgrid[tp[_row] + rowOffset][tp[_col] + colOffset] = tp[2];
+            newgrid[tp.row() + rowOffset][tp.col() + colOffset] = tp.tile;
         });
 
         // cache it
@@ -86,21 +119,17 @@ var Board = function(state) {
 
     this.row = function(rowNum, tps) {
         if (typeof tps == 'undefined') tps = state.tilePlacements();
-        
-        return {
-                row: rowNum,
-                
-                tpstps.filter(function(tp) {
-            return tp[_row] === rowNum;
-        }).;
-                }
+
+        return tps.filter(function(tp) {
+            return tp.row() === rowNum;
+        });
     }
 
     this.column = function(colNum, tps) {
         if (typeof tps == 'undefined') tps = state.tilePlacements();
         
         return tps.filter(function(tp) {
-            return tp[_col] === colNum;
+            return tp.col() === colNum;
         });
     }
 
@@ -114,7 +143,7 @@ var Board = function(state) {
         return colors[color](shapes[shape]);
     }
 
-     this.printTiles = function(tiles) {
+    this.printTiles = function(tiles) {
         if (typeof tiles === 'undefined') var tiles = state.getCurrentPlay().turnTiles();
         // var printTile = this.printTile;
         return tiles.map(function(x) { return state.board.printTile(x); }).join(' ');
@@ -160,155 +189,162 @@ var Board = function(state) {
         console.log('');
   
     }
-    this.equalCoords = function(coord1, coord2) {
-        return coord1[_row] === coord2[_row] && coord1[_col] === coord2[_col];
-    }
+    // this.equalCoords = function(coord1, coord2) {
+    //     return coord1.x === coord2.x && coord1[_col] === coord2[_col];
+    // }
 
-    this.coordsIn = function(needle, haystack) {
+    // this.coordsIn = function(needle, haystack) {
 
-        for (var i = haystack.length - 1; i >= 0; i--) {
-            if (this.equalCoords(needle, haystack[i])) return i;
-        };
-        return -1;
-    }
+    //     for (var i = haystack.length - 1; i >= 0; i--) {
+    //         if (this.equalCoords(needle, haystack[i])) return i;
+    //     };
+    //     return -1;
+    // }
 
-    this.lineAt = function(startIndex, colElseRow, tps) {
-        var lookup = Number(colElseRow);
-        var min, max, tile, line = [];
-        var i = 1;
+    // this.lineAt = function(startIndex, colElseRow, tps) {
+    //     var lookup = Number(colElseRow);
+    //     var min, max, tile, line = [];
+    //     var i = 1;
 
-        while (typeof min == 'undefined') {
-            tile = this.tileAt(colElseRow ? row - i : row, colElseRow ? col : col - 1, tps);
-            if (typeof tile != 'undefined') {
-                rowLine.unshift(tile);
-                i++;
-            } else {
-                minCol = col - i;
-            }
-        }
+    //     while (typeof min == 'undefined') {
+    //         tile = this.tileAt(colElseRow ? row - i : row, colElseRow ? col : col - 1, tps);
+    //         if (typeof tile != 'undefined') {
+    //             rowLine.unshift(tile);
+    //             i++;
+    //         } else {
+    //             minCol = col - i;
+    //         }
+    //     }
 
-        i = 1;
+    //     i = 1;
 
-        while (typeof max == 'undefined') {
-            tile = this.tileAt(row, col + i, rowTps);
-            if (typeof tile != 'undefined') {
-                rowLine.push(tile);
-            } else {
-                maxCol = col + i;
-            }            
-        }
+    //     while (typeof max == 'undefined') {
+    //         tile = this.tileAt(row, col + i, rowTps);
+    //         if (typeof tile != 'undefined') {
+    //             rowLine.push(tile);
+    //         } else {
+    //             maxCol = col + i;
+    //         }            
+    //     }
 
-        for (var i = 1; typeof min == 'undefined' || typeof max == 'undefined'; i++) {
-            if (typeof maxCol == 'undefined') {
-                tile = this.tileAt(row, col + i, rowTps);
-                if (typeof tile != 'undefined') {
-                    rowLine.push(tile);
-                } else {
-                    maxCol = col + i;
-                }
-            }
-            if (typeof minCol == 'undefined') {
-                tile = this.tileAt(row, col - i, rowTps);
-                if (typeof tile != 'undefined') {
-                    rowLine.unshift(tile);
-                } else {
-                    minCol = col - i;
-                }
-            }
-            if (typeof maxRow == 'undefined') {
-                tile = this.tileAt(row + i, col, colTps);
-                if (typeof tile != 'undefined') {
-                    colLine.push(tile);
-                } else {
-                    maxRow = row + i;
-                }
-            }
-            if (typeof minRow == 'undefined') {
-                tile = this.tileAt(row - i, col, colTps);
-                if (typeof tile != 'undefined') {
-                    colLine.unshift(tile);
-                } else {
-                    minRow = row - i;
-                }
-            }
-        };
-    }
+    //     for (var i = 1; typeof min == 'undefined' || typeof max == 'undefined'; i++) {
+    //         if (typeof maxCol == 'undefined') {
+    //             tile = this.tileAt(row, col + i, rowTps);
+    //             if (typeof tile != 'undefined') {
+    //                 rowLine.push(tile);
+    //             } else {
+    //                 maxCol = col + i;
+    //             }
+    //         }
+    //         if (typeof minCol == 'undefined') {
+    //             tile = this.tileAt(row, col - i, rowTps);
+    //             if (typeof tile != 'undefined') {
+    //                 rowLine.unshift(tile);
+    //             } else {
+    //                 minCol = col - i;
+    //             }
+    //         }
+    //         if (typeof maxRow == 'undefined') {
+    //             tile = this.tileAt(row + i, col, colTps);
+    //             if (typeof tile != 'undefined') {
+    //                 colLine.push(tile);
+    //             } else {
+    //                 maxRow = row + i;
+    //             }
+    //         }
+    //         if (typeof minRow == 'undefined') {
+    //             tile = this.tileAt(row - i, col, colTps);
+    //             if (typeof tile != 'undefined') {
+    //                 colLine.unshift(tile);
+    //             } else {
+    //                 minRow = row - i;
+    //             }
+    //         }
+    //     };
+    // }
 
     this.linesAtCache = {};
-    this.linesAt = function(row, col, tps) {
+    this.linesAt = function(coords, tps) {
         if (typeof tps == 'undefined') tps = state.tilePlacements();
 
-        var serialize = JSON.stringify(tps) + 'r' + row + 'c' + col;
+        var serialize = JSON.stringify(tps) + JSON.stringify(coords);
 
         if (serialize in this.linesAtCache) {
             return this.linesAtCache[serialize];
         }
 
-        var orig = this.tileAt(row, col, tps);
+        var orig = this.tileAt(coords, tps);
 
         if (typeof orig == 'undefined') return { rowLine: [], colLine: [] };
 
-        var rowTps = this.row(row, tps);
-        var colTps = this.column(col, tps);
-        var rowLine = [orig];
-        var colLine = [orig];
-        var tile, minCol, maxCol, minRow, maxRow;
+        var rowTps = this.row(coords.row(), tps);
+        var colTps = this.column(coords.column(), tps);
+        var rowLine = [];
+        var colLine = [];
+        var tile;
 
-        for (var i = 1; typeof maxCol == 'undefined' ||
-                        typeof minCol == 'undefined' ||
-                        typeof maxRow == 'undefined' ||
-                        typeof minRow == 'undefined'; i++) {
-            if (typeof maxCol == 'undefined') {
-                tile = this.tileAt(row, col + i, rowTps);
-                if (typeof tile != 'undefined') {
-                    rowLine.push(tile);
-                } else {
-                    maxCol = col + i;
-                }
-            }
-            if (typeof minCol == 'undefined') {
-                tile = this.tileAt(row, col - i, rowTps);
-                if (typeof tile != 'undefined') {
-                    rowLine.unshift(tile);
-                } else {
-                    minCol = col - i;
-                }
-            }
-            if (typeof maxRow == 'undefined') {
-                tile = this.tileAt(row + i, col, colTps);
-                if (typeof tile != 'undefined') {
-                    colLine.push(tile);
-                } else {
-                    maxRow = row + i;
-                }
-            }
-            if (typeof minRow == 'undefined') {
-                tile = this.tileAt(row - i, col, colTps);
-                if (typeof tile != 'undefined') {
-                    colLine.unshift(tile);
-                } else {
-                    minRow = row - i;
-                }
-            }
-        };
+        var nextCoords = coords.neighbor('left');
+
+        tile = this.tileAt(nextCoords, rowTps);
+        while (tile != 'undefined') {
+            rowLine.push(tile);
+            nextCoords = nextCoords.neighbor('left');
+            tile = this.tileAt(nextCoords, rowTps);
+        }
+
+        var leftBound = _.clone(nextCoords);
+
+        rowLine.push(orig);
+
+        var nextCoords = coords.neighbor('right');
+        tile = this.tileAt(nextCoords, rowTps);
+        while (tile != 'undefined') {
+            rowLine.push(tile);
+            nextCoords = nextCoords.neighbor('right');
+            tile = this.tileAt(nextCoords, rowTps);
+        }
+
+        var rightBound = _.clone(nextCoords);
+
+        var nextCoords = coords.neighbor('up');
+        tile = this.tileAt(nextCoords, colTps);
+        while (tile != 'undefined') {
+            colLine.push(tile);
+            nextCoords = nextCoords.neighbor('up');
+            tile = this.tileAt(nextCoords, colTps);
+        }
+
+        var upBound = _.clone(nextCoords);
+
+        colLine.push(orig);
+
+        var nextCoords = coords.neighbor('down');
+        tile = this.tileAt(nextCoords, colTps);
+        while (tile != 'undefined') {
+            colLine.push(tile);
+            nextCoords = nextCoords.neighbor('down');
+            tile = this.tileAt(nextCoords, colTps);
+        }
+
+        var downBound = _.clone(nextCoords);
 
         var ret = {
                 rowLine: rowLine,
                 colLine: colLine,
-                colBounds: [[minRow, col], [maxRow, col]], 
-                rowBounds: [[row, minCol], [row, maxCol]], 
+                colBounds: [upBound, downBound], 
+                rowBounds: [leftBound, rightBound], 
                };
         this.linesAtCache[serialize] = ret;
         return ret;
     }
 
 
-    this.getLines = function(row, col, coords) {
-        if (coords) {
-            return this.getRowLine(row, col, true).concat(this.getColLine(row, col, true));
-        }
-        return [this.getRowLine(row, col), this.getColLine(row, col)];
-    }
+    // this.getLines = function(row, col, coords) {
+    //     if (coords) {
+    //         return this.getRowLine(row, col, true).concat(this.getColLine(row, col, true));
+    //     }
+    //     return [this.getRowLine(row, col), this.getColLine(row, col)];
+    // }
 
     this.lineIsValid = function(line) {
 
@@ -330,16 +366,18 @@ var Board = function(state) {
 
  
     // called only be updatePlayable
-    this.getPlayableNeighbors = function(row, col) {
+    this.getPlayableNeighbors = function(coords, tps) {
+        if (typeof tps == 'undefined') tps = state.tilePlacements();
+
         var playableNeighbors = [];
         var unplayableNeighbors = [];
 
-        var lines = this.linesAt(row, col);
+        var lines = this.linesAt(coords, tps);
 
         var neighbors = lines.colBounds.concat(lines.rowBounds);
 
         for (var i = neighbors.length - 1; i >= 0; i--) {
-            if (this.coordsPlayable(neighbors[i][_row], neighbors[i][_column])) {
+            if (this.coordsPlayable(neighbors[i]) {
                 playableNeighbors.push(neighbors[i]);
             } else {
                 unplayableNeighbors.push(neighbors[i]);
@@ -349,14 +387,10 @@ var Board = function(state) {
         return { playable: playableNeighbors, unplayable: unplayableNeighbors };
     }
 
-    this.tileAt = function(row, col, tps) {
+    this.tileAt = function(coords, tps) {
 
         if (typeof tps == 'undefined') tps = state.tilePlacements();
-
-        var tp = _.flatten(tps.filter(function(tp) {
-                    return tp[_row] === row && tp[_column] === col;
-                }));
-
+        var tp = _.find(tps, function(tp) { coords.equals(tps.coords); });
         return tp.length ? tp[2] : undefined;
     }
 
