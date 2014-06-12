@@ -1,8 +1,4 @@
 var _ = require('underscore');
-var clc = require('cli-color');
-
-var colors = [clc.red, clc.blue, clc.green, clc.yellow, clc.magenta, clc.cyan, clc.white, clc.black, clc.bgRed, clc.bgCyan, clc.bgGreen, clc.bgYellow ];
-var shapes = [ '@', '#', '$', '%', '&', '*', "+", "=", "?", "\\", "8", "Z" ];
 
 
 var Coordinates = function(x, y) {
@@ -13,26 +9,29 @@ var Coordinates = function(x, y) {
 Coordinates.prototype.row = function() { return this.y; }
 Coordinates.prototype.column = function() { return this.x; }
 Coordinates.prototype.neighbor = function(dir) {
-    var newX = this.x + (1 * dir === 'left' ? -1 : dir === 'right' ? 1 : 0);
-    var newY = this.y + (1 * dir === 'up' ? -1 : dir === 'down' ? 1 : 0);
+    var newX = this.x, newY = this.y;
+    if (dir === 'left') newX = newX - 1;
+    if (dir === 'right') newX = newX + 1;
+    if (dir === 'up') newY = newY -1;
+    if (dir === 'down') newY = newY + 1;
     return new Coordinates(newX, newY); 
 }
 Coordinates.prototype.neighbors = function() {
-    return [
-            this.neighbor('up'),
-            this.neighbor('right'),
-            this.neighbor('down'),
-            this.neighbor('left')
-           ]
+    return {
+            up: this.neighbor('up'),
+            right: this.neighbor('right'),
+            down: this.neighbor('down'),
+            left: this.neighbor('left')
+           }
 }
 
 Coordinates.prototype.equals = function(coords) {
-    return this.x === coords.x && this.y === coords.y;
+    return this.column() === coords.column() && this.row() === coords.row();
 }
 
-Coordinates.prototype.in = function(coords_array) {
-    for (var i = 0; i < coords_array.length; i++) {
-        if (this.equals(coords_array[i]) {
+Coordinates.prototype.in = function(coordsArray) {
+    for (var i = 0; i < coordsArray.length; i++) {
+        if (this.equals(coordsArray[i])) {
             return i;
         }
     };
@@ -44,6 +43,13 @@ var TilePlacement = function(coords, tile) {
     this.tile = tile;
 }
 
+TilePlacement.prototype.row = function() {
+    return this.coords.row();
+}
+
+TilePlacement.prototype.column = function() {
+    return this.coords.column();
+}
 // var LineTilePlacements = function(tps, colElseRow, lineIndex) {
 //     this.orientation: colElseRow ? 'column' : 'row';
 //     this.index = lineIndex;
@@ -103,7 +109,7 @@ var Board = function(state) {
 
         // project tile placements onto our new grid
         tps.map(function(tp) {
-            newgrid[tp.row() + rowOffset][tp.col() + colOffset] = tp.tile;
+            newgrid[tp.row() + rowOffset][tp.column() + colOffset] = tp.tile;
         });
 
         // cache it
@@ -129,66 +135,11 @@ var Board = function(state) {
         if (typeof tps == 'undefined') tps = state.tilePlacements();
         
         return tps.filter(function(tp) {
-            return tp.col() === colNum;
+            return tp.column() === colNum;
         });
     }
 
-    this.printTile = function(tile, bgColor) {
-        if (typeof tile != 'number') return ' ';
-        if ( tile < 0 || tile > state.numTypes*state.numTypes) return ' '
-        var color = state.getColor(tile);
-        var shape = state.getShape(tile);
 
-        if (typeof bgColor == 'function') return bgColor(colors[color](shapes[shape]));
-        return colors[color](shapes[shape]);
-    }
-
-    this.printTiles = function(tiles) {
-        if (typeof tiles === 'undefined') var tiles = state.getCurrentPlay().turnTiles();
-        // var printTile = this.printTile;
-        return tiles.map(function(x) { return state.board.printTile(x); }).join(' ');
-    }
-
-    this.printBoard = function(grid_pkg) {
-        if (typeof grid_pkg == 'undefined') grid_pkg = state.turnGrid();
-        var grid = grid_pkg.grid;
-        row = '   ';
-        var colNum;
-        var rowNum;
-
-        // add columns index
-        // for (var i = 0; i < grid[0].length; i++) {
-        //     colNum = i - grid_pkg.colOffset;
-        //     row += new Array(4 - String(colNum).length).join(' ');
-        //     row += colNum;
-        // };
-
-        console.log(row);
-
-        for (var i = 0; i < grid.length; i++) {
-            row = '';
-            rowNum = i - grid_pkg.rowOffset;
-            // row += rowNum;
-            // row += new Array(4 - String(rowNum).length).join(' ');
-            for (var j = 0; j < grid[0].length; j++) {
-                var cell;
-                if ( grid[i][j] === undefined ) {
-                    cell = ' ';
-                } else if (this.coordsIn([rowNum, j - grid_pkg.colOffset], state.turnHistory) != -1) {
-                    cell = state.board.printTile(grid[i][j], clc.bgGreen);
-                } else if (this.coordsIn([rowNum, j - grid_pkg.colOffset], state.gameHistory[state.gameHistory.length - 1]) != -1) {
-                    cell = state.board.printTile(grid[i][j], clc.bgWhite);
-                } else {
-                    cell = state.board.printTile(grid[i][j]);
-                }
-                // row += '  '; 
-                row += cell;
-            };
-            console.log(row);
-        };
-        console.log('');
-  
-    }
     // this.equalCoords = function(coord1, coord2) {
     //     return coord1.x === coord2.x && coord1[_col] === coord2[_col];
     // }
@@ -286,7 +237,7 @@ var Board = function(state) {
         var nextCoords = coords.neighbor('left');
 
         tile = this.tileAt(nextCoords, rowTps);
-        while (tile != 'undefined') {
+        while (typeof tile !== 'undefined') {
             rowLine.push(tile);
             nextCoords = nextCoords.neighbor('left');
             tile = this.tileAt(nextCoords, rowTps);
@@ -298,7 +249,7 @@ var Board = function(state) {
 
         var nextCoords = coords.neighbor('right');
         tile = this.tileAt(nextCoords, rowTps);
-        while (tile != 'undefined') {
+        while (typeof tile !== 'undefined') {
             rowLine.push(tile);
             nextCoords = nextCoords.neighbor('right');
             tile = this.tileAt(nextCoords, rowTps);
@@ -308,7 +259,7 @@ var Board = function(state) {
 
         var nextCoords = coords.neighbor('up');
         tile = this.tileAt(nextCoords, colTps);
-        while (tile != 'undefined') {
+        while (typeof tile !== 'undefined') {
             colLine.push(tile);
             nextCoords = nextCoords.neighbor('up');
             tile = this.tileAt(nextCoords, colTps);
@@ -320,7 +271,7 @@ var Board = function(state) {
 
         var nextCoords = coords.neighbor('down');
         tile = this.tileAt(nextCoords, colTps);
-        while (tile != 'undefined') {
+        while (typeof tile !== 'undefined') {
             colLine.push(tile);
             nextCoords = nextCoords.neighbor('down');
             tile = this.tileAt(nextCoords, colTps);
@@ -371,13 +322,13 @@ var Board = function(state) {
 
         var playableNeighbors = [];
         var unplayableNeighbors = [];
-
+        // debugger;
         var lines = this.linesAt(coords, tps);
 
         var neighbors = lines.colBounds.concat(lines.rowBounds);
 
         for (var i = neighbors.length - 1; i >= 0; i--) {
-            if (this.coordsPlayable(neighbors[i]) {
+            if (this.coordsPlayable(neighbors[i])) {
                 playableNeighbors.push(neighbors[i]);
             } else {
                 unplayableNeighbors.push(neighbors[i]);
@@ -390,15 +341,17 @@ var Board = function(state) {
     this.tileAt = function(coords, tps) {
 
         if (typeof tps == 'undefined') tps = state.tilePlacements();
-        var tp = _.find(tps, function(tp) { coords.equals(tps.coords); });
-        return tp.length ? tp[2] : undefined;
+
+        var tp = _.find(tps, function(tp) { return coords.equals(tp.coords); });
+
+        return tp ? tp.tile : tp;
     }
 
 
-    this.placeTileValidate = function(row, col, tile) {
+    this.placeTileValidate = function(coords, tile) {
 
 
-        if ( this.coordsIn([row, col], state.playable()) === -1) {
+        if ( coords.in(state.playable()) === -1) {
             console.log('coords not in playable; ' + row + ', '  + col);
             console.log(state.playable());
             return false;
@@ -406,11 +359,11 @@ var Board = function(state) {
         
         var tps = state.tilePlacements(state.gameHistory.concat([
             state.turnHistory.concat([
-                [row, col, tile]
+                new TilePlacement(coords, tile)
             ])
         ]));
 
-        var newLines = this.linesAt(row, col, tps);
+        var newLines = this.linesAt(coords, tps);
 
         if ( !this.lineIsValid(newLines.rowLine) ||
              !this.lineIsValid(newLines.colLine) ) {
@@ -420,14 +373,14 @@ var Board = function(state) {
         return true;
     }
 
-    this.coordsPlayable = function(row, col) {
+    this.coordsPlayable = function(coords) {
 
-        if (typeof this.tileAt(row, col) != 'undefined') return false;
+        if (typeof this.tileAt(coords) != 'undefined') return false;
 
-        var upLine = this.linesAt(row - 1, col).colLine;
-        var rightLine = this.linesAt(row, col + 1).rowLine;
-        var downLine = this.linesAt(row + 1, col).colLine;
-        var leftLine = this.linesAt(row, col - 1).rowLine;
+        var upLine = this.linesAt(coords.neighbor('up')).colLine;
+        var rightLine = this.linesAt(coords.neighbor('right')).rowLine;
+        var downLine = this.linesAt(coords.neighbor('down')).colLine;
+        var leftLine = this.linesAt(coords.neighbor('left')).rowLine;
 
 
         //length test
@@ -576,3 +529,5 @@ var Board = function(state) {
 }
 
 exports.Board = Board;
+exports.Coordinates = Coordinates;
+exports.TilePlacement = TilePlacement;

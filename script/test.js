@@ -1,8 +1,72 @@
 var twq = require('./state');
+var Board = require('./board');
 var clc = require('cli-color');
+
+var colors = [clc.red, clc.blue, clc.green, clc.yellow, clc.magenta, clc.cyan, clc.white, clc.black, clc.bgRed, clc.bgCyan, clc.bgGreen, clc.bgYellow ];
+var shapes = [ '@', '#', '$', '%', '&', "8", "+", "=", "?", "\\", '*', "Z" ];
+
 var _ = require('underscore');
 var numTypes = 6;
 var copies = 3;
+
+var printTile = function(state, tile, bgColor) {
+    if (typeof tile != 'number') return ' ';
+    if ( tile < 0 || tile > state.numTypes*state.numTypes) return ' '
+    var color = state.getColor(tile);
+    var shape = state.getShape(tile);
+
+    if (typeof bgColor == 'function') return bgColor(colors[color](shapes[shape]));
+    return colors[color](shapes[shape]);
+}
+
+var printTiles = function(state, tiles) {
+    if (typeof tiles === 'undefined') var tiles = state.getCurrentPlay().turnTiles();
+    // var printTile = this.printTile;
+    return tiles.map(function(x) { return state.board.printTile(x); }).join(' ');
+}
+
+var printBoard = function(state, grid_pkg) {
+    if (typeof grid_pkg == 'undefined') grid_pkg = state.turnGrid();
+    var grid = grid_pkg.grid;
+    row = '   ';
+    var colNum;
+    var rowNum;
+    var cell;
+    var coords;
+    // add columns index
+    // for (var i = 0; i < grid[0].length; i++) {
+    //     colNum = i - grid_pkg.colOffset;
+    //     row += new Array(4 - String(colNum).length).join(' ');
+    //     row += colNum;
+    // };
+
+    console.log(row);
+
+    for (var i = 0; i < grid.length; i++) {
+        row = '';
+        rowNum = i - grid_pkg.rowOffset;
+        // row += rowNum;
+        // row += new Array(4 - String(rowNum).length).join(' ');
+        for (var j = 0; j < grid[0].length; j++) {
+            coords = new Board.Coordinates(rowNum, j - grid_pkg.colOffset);
+
+            if ( grid[i][j] === undefined ) {
+                cell = ' ';
+            } else if (coords.in(state.turnHistory) != -1) {
+                cell = printTile(state, grid[i][j], clc.bgGreen);
+            } else if (coords.in(state.lastTilePlacements()) != -1) {
+                cell = printTile(state, grid[i][j], clc.bgWhite);
+            } else {
+                cell = printTile(state, grid[i][j]);
+            }
+            // row += '  '; 
+            row += cell;
+        };
+        console.log(row);
+    };
+    console.log('');
+
+}
 
 var playTurn = function(state) {
 	// console.log(state.gameHistory.length +1);
@@ -14,8 +78,9 @@ var playTurn = function(state) {
 	var move = state.computerPlay(state.turn() % 2);
 	// var move = state.computerPlay();
 	if (move[0] === 'play') {
-		
+		// debugger;
 		g.turnHistory = move[1];
+		// debugger;
 		// console.log(g.turnHistory);
 
 		var gameOver = state.gameOver();
@@ -36,6 +101,13 @@ var playTurn = function(state) {
 		return true;
 	}
 }
+
+// var coord1 = new Board.Coordinates(0,1);
+// var coord2 = new Board.Coordinates(0,2);
+
+// console.log(coord1.equals(coord2));
+
+
 // REPEAT CODE
 // var reps = 500;
 // var i = 0;
@@ -96,10 +168,10 @@ var g = twq.initState(['a', 'b'], [0, 0], numTypes, copies);
 var start = +new Date();
 
 playTurn(g);
-g.board.printBoard();
+printBoard(g);
 
 playTurn(g);
-g.board.printBoard();
+printBoard(g);
 
 // playTurn(g);
 
@@ -109,7 +181,7 @@ g.board.printBoard();
 
 while (playTurn(g)) {
 
-	g.board.printBoard();
+	printBoard(g);
 	console.log(g.players.map(function(x) { return ' ' + x.score + ' ';}).join(','));
 	console.log(g.players.map(function(x) { return ' ' + x.tiles.length + ' ';}).join(','));
 }

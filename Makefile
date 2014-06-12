@@ -11,7 +11,7 @@ realAll: static/bundle.js
 SCRIPTS = $(shell find script -maxdepth 2 -name "*.js")
 
 static/bundle.js: $(SCRIPTS)
-	browserify script/main.js -o bundle.js
+	browserify -o bundle.js
 
 clean:
 	rm static/bundle.js
