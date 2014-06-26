@@ -2,7 +2,7 @@ var _ = require('underscore');
 var qunit = require('qunit');
 var Player = require('./player');
 var Board = require('./board');
-var Combs = require('./combinatorics').Combinatorics;
+// var Combs = require('./combinatorics').Combinatorics;
 
 exports.sum = function(nums) {
     var sum = 0;
@@ -85,7 +85,7 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
     // playableCache remembers the playable state of the board at the
     // beginning of each turn
     // state.playableCache = [ [state.board.center, state.board.center] ];
-    state.playableCache = [ [0, 0] ];
+    state.playableCache = [ new Board.Coordinates(0,0) ];
 
     state.tilePlacementsCache = {};
     state.tilePlacements = function(gh) {
@@ -95,7 +95,6 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
 
         if (typeof gh == 'undefined') gh = this.gameHistory.concat([this.turnHistory]);
 
-
         var serialize = JSON.stringify(gh);
         if (serialize in this.tilePlacementsCache) return this.tilePlacementsCache[serialize];
 
@@ -103,7 +102,7 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
             return turn[0] != 'exchange';
         }), 1).sort(function(a, b) {
             // sorts by row. if rows are equal, sorts by column.
-            return a[0] != b[0] ? a[0] - b[0] : a[1] - b[1];
+            return a.coords.row() != b.coords.row() ? a.coords.row() - b.coords.row() : a.coords.column() - b.coords.column();
         });
         this.tilePlacementsCache[serialize] = ret;
         return ret;
@@ -123,14 +122,25 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
     }
     state.turn = function() { return this.gameHistory.length; }
 
+    state.lastTilePlacements = function() {
+
+        var index = this.gameHistory.length - 1;
+
+        while (index > -1) {
+            if (this.gameHistory[index][0] !== 'exchange') return this.gameHistory[index];
+        }
+        
+        return [];
+    }
+
     state.turnIsColumn = function() {
         return  this.turnHistory.length > 1 && 
-                this.turnHistory[0][1] === this.turnHistory[1][1];
+                this.turnHistory[0].column() === this.turnHistory[1].column();
     }
 
     state.turnIsRow = function() {
         return  this.turnHistory.length > 1 && 
-                this.turnHistory[0][0] === this.turnHistory[1][0];
+                    this.turnHistory[0].coords.row() === this.turnHistory[1].coords.row();
     }
 
     state.playable = function() {
@@ -138,10 +148,7 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
             return this.playableCache;
         }
 
-        var row = this.turnHistory[0][0];
-        var col = this.turnHistory[0][1];
-
-        var lines = this.board.linesAt(row, col);
+        var lines = this.board.linesAt(this.turnHistory[0].coords);
 
         // note to self: filtering only those bounds which return
         // true from board.coordsPlayable makes it MUCH slower.
@@ -152,7 +159,6 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
         } else {
             return lines.colBounds;
         }
-
     }
 
     state.moveLines = function() {
@@ -161,18 +167,17 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
 
         if (!th.length) return [];
 
-        var lines = this.board.linesAt(th[0][0], th[0][1]);
+        var lines = this.board.linesAt(th[0].coords);
         if (th.length === 1) return [ lines.rowLine, lines.colLine ];
-
         if (this.turnIsRow()) {
             // mainline is row
             return th.map(function (x) {
-                                    return outer.board.linesAt(x[0], x[1]).colLine;
+                                    return outer.board.linesAt(x.coords).colLine;
                             }).concat([lines.rowLine]);
         } else {
             // mainline is col
             return th.map(function (x) {
-                                    return outer.board.linesAt(x[0], x[1]).rowLine;
+                                    return outer.board.linesAt(x.coords).rowLine;
                             }).concat([lines.colLine]);
         }
 
@@ -188,26 +193,26 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
         return copy;
     }
 
-    state.getPlayableOnMove = function(row, col, remove) {
+    state.getPlayableOnMove = function(coords, remove) {
 
         var index;
         var playable = this.playableCache;
 
         if (!remove) {
-            index = this.board.coordsIn([row, col], this.playableCache);
+            index = coords.in(this.playableCache);
             if (index !== -1) {
                 playable.splice(index, 1);
             }
         } else {
-            playable.push([row, col]);
+            playable.push(coords);
         }
 
-        var neighbors = this.board.getPlayableNeighbors(row, col);
+        var neighbors = this.board.getPlayableNeighbors(coords);
 
         // loop through UNplayable neighbors
         for (var i = neighbors.unplayable.length - 1; i >= 0; i--) {
             // check if newly found UNplayable cell is currently in playable
-            index = this.board.coordsIn(neighbors.unplayable[i], playable);
+            index = neighbors.unplayable[i].in(playable);
             if (index !== -1) {
                 // remove newly found UNplayable cell from playable.
                 playable.splice(index, 1);
@@ -215,7 +220,7 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
         };
 
         for (var i = neighbors.playable.length - 1; i >= 0; i--) {
-            if (this.board.coordsIn(neighbors.playable[i], playable) === -1) {
+            if ( neighbors.playable[i].in(playable) === -1) {
                 playable.push(neighbors.playable[i]);
             }
         };
@@ -247,11 +252,11 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
     state.getCurrentPlayer = function() {
         return this.players[this.turn() % this.players.length];
     }
-    state.tilePlace = function(row, col, tile) {
-        if ( !this.board.placeTileValidate(row, col, tile) ) {
+    state.tilePlace = function(coords, tile) {
+        if ( !this.board.placeTileValidate(coords, tile) ) {
             return false;
         }
-        this.turnHistory.push([row, col, tile]);
+        this.turnHistory.push(new Board.TilePlacement(coords, tile));
         return true;
     }
 
@@ -261,9 +266,9 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
         return true;
     }
 
-    state.removeTile = function(row, col) {
+    state.removeTile = function(coords) {
         for (var i = 0; i < this.turnHistory.length; i++) {
-            if (this.board.equalCoords([row, col], this.turnHistory[i])) {
+            if (coords.equal(this.turnHistory[i])) {
                 this.turnHistory.splice(i, 1);
                 return true;
             }
@@ -271,9 +276,9 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
         var tps = this.tilePlacements();
 
         for (var i = 0; i < tps.length; i++) {
-            if (this.board.equalCoords([row, col], tps[i])) {
+            if (coords.equal(tps[i])) {
                 tps.splice(i, 1);
-                this.getPlayableOnMove(row, col, true);
+                this.getPlayableOnMove(coords, true);
                 return true;
             }
         };
@@ -290,8 +295,11 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
         return line.length;
     }
     state.gameOver = function() {
-        var playerTileCount = this.turnHistory.length ? this.getCurrentPlayer().turnTiles().length : this.players[this.turn() - 1 % this.player.length].tiles.length;
-        return this.bag.length + playerTileCount === 0;
+        // game can't be over if there are still tiles in the bag
+        if (this.bag.length) return false;
+
+        // is there any player without tiles left?
+        return this.players.filter(function(player) { return !player.tiles.length; }).length;
     }
     state.scoreTurn = function(moveLines) {
         var outer = this;
@@ -314,8 +322,11 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
     }
 
     state.resetTurn = function () {
+        var player = this.getCurrentPlayer();
 
-        this.turnHistory = [];
+        while (this.turnHistory.length) {
+            player.tiles.push(this.turnHistory.pop().tile);
+        }
     }
 
     state.determineWinner = function() {
@@ -338,9 +349,6 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
 
         var player = this.getCurrentPlayer();
 
-        var row;
-        var col;
-        var tile;
         var turnScore = this.scoreTurn();
         player.score += turnScore;
         player.drawTiles(state, this.turnHistory.length);
@@ -348,12 +356,8 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
         while (this.turnHistory.length) {
             var move = this.turnHistory.shift();
             turnPush.push(move);
-            var row = move[0];
-            var col = move[1];
-            var tile = move[2];
 
-            this.playableCache = this.getPlayableOnMove(row, col);
-            player.removeTile(tile);
+            this.playableCache = this.getPlayableOnMove(move.coords);
         }
 
 
@@ -390,10 +394,11 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
         var plyr = this.getCurrentPlayer();
 
         if (this.isInitialState()) {
-            var move = [];
+            var coords, move = [];
             var line = plyr.getLongestLine(this);
             for (var i = 0; i < line.length; i++) {
-                move.push([0, i, line[i]]);
+                coords = new Board.Coordinates(0, i);
+                move.push(new Board.TilePlacement(coords, line[i]));
             };
             return ['play', move];
         }
@@ -406,15 +411,16 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
             var row, col, tile;
             var playables = outer.playable();
             for (var i = 0; i < playables.length; i++) {
-                row = Number(playables[i][0]);
-                col = Number(playables[i][1]);
 
                 for (var j = rack.length - 1; j >= 0; j--) {
 
                     tile = rack[j];
-                    if (outer.tilePlace(row, col, tile)) {
+                    if (outer.tilePlace(playables[i], tile)) {
                         recurse_optimize_score(rack.slice(0,j).concat(rack.slice(j + 1)), avoid_twerqle_bait);
-                        if (killswitch) return;
+                        if (killswitch) {
+                            outer.turnHistory = [];
+                            return;
+                        }
                     }
                 };
             };
@@ -430,77 +436,6 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
             }
         }
 
-        // function recurse_avoid_qwerlebait(string, lastMove) {
-        //     var rack, tile, row, col, lines, newLastMove;
-        //     for (var i = 0; i < outer.turnPlayable.length; i++) {
-        //         // if (string || playableRange.indexOf(i) !== -1) {
-        //             var rack = outer.getCurrentPlayer().tiles;
-        //             for (var j = rack.length - 1; j >= 0; j--) {
-        //                 var tile = outer.getCurrentPlayer().tiles[j];
-        //                 var row = Number(outer.turnPlayable[i][0]);
-        //                 var col = Number(outer.turnPlayable[i][1]);
-        //                 if (Math.random() < type * ( 0.5 * ( 1 / outer.turnHistory.length + 1 ) )) {
-        //                     if (outer.placeTile(tile, row, col)) {
-        //                         var newLastMove = 't' + tile + 'r' + row + 'c' + col;
-        //                         recurse_avoid_qwerlebait(string + newLastMove, newLastMove);
-        //                     }
-        //                 }
-        //             };
-        //         // }
-        //     };
-        //     if (string) {
-        //         var lines = [];
-        //         var colLine, rowLine, skip;
-        //         var lastMove = lastMove.split(/[trc]/);
-        //         var row = Number(lastMove[2]);
-        //         var col = Number(lastMove[3]);
-        //         var skip = false;
-
-
-        //         if (outer.turnOrientation === 0) {
-        //             rowLine = outer.getRowLine(row, col);
-        //             if (rowLine.length === outer.numTypes - 1)
-        //                 lines = lines.concat(outer.getRowLine(row, col, true));
-        //             colLine = outer.getColLine(row, col);
-        //             if (colLine.length === outer.numTypes - 1)
-        //                 lines = lines.concat(outer.getColLine(row, col, true));
-        //         } else if (outer.turnOrientation === 1) {
-        //             rowLine = outer.getRowLine(row, col);
-        //             if (rowLine.length === outer.numTypes - 1) 
-        //                 lines = lines.concat(outer.getRowLine(row, col, true));
-        //             for (var i = 0; i < outer.turnHistory.length; i++) {
-        //                 colLine = outer.getColLine(     outer.turnHistory[i][0],
-        //                                                 outer.turnHistory[i][1]
-        //                                             );
-        //                 if (colLine.length === outer.numTypes - 1) 
-        //                     lines = lines.concat(   outer.getColLine(outer.turnHistory[i][0],
-        //                                             outer.turnHistory[i][1], true)
-        //                                         );
-        //             };
-        //         } else if (outer.turnOrientation === 2) {
-        //             colLine = outer.getColLine(row, col);
-        //             if (colLine.length === outer.numTypes - 1) lines = lines.concat(outer.getColLine(row, col, true));
-        //             for (var i = 0; i < outer.turnHistory.length; i++) {
-        //                 rowLine = outer.getRowLine(outer.turnHistory[i][0], outer.turnHistory[i][1]);
-        //                 if (rowLine.length === outer.numTypes - 1) lines = lines.concat(outer.getRowLine(outer.turnHistory[i][0], outer.turnHistory[i][1], true));
-        //             };
-        //         }
-        //         for (var i = 0; i < lines.length; i++) {
-        //             if (outer.coordsPlayable(lines[i][0], lines[i][1])) skip = true;
-        //         };
-        //         // if (!skip) {
-        //             scores[string] = outer.scoreTurn() - (Math.floor(outer.numTypes/2) * Number(skip));
-        //         // }
-        //         outer.rewindState(Number(lastMove[1]), Number(lastMove[2]), Number(lastMove[3]));
-        //         // ui.getCellByRowCol(lastMove[2], lastMove[3]).html("");
-        //     }
-        //     // string = string.slice(0, string.lastIndexOf('t'));
-        // }
-
-
-
-
-        // var printTiles = this.board.printTiles;
         for (var i = lines.length - 1; i >= 0; i--) {
             recurse_optimize_score(lines[i], avoid_twerqle_bait);
             this.resetTurn();
@@ -519,7 +454,15 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
 
         if (highest) {
             var index = Math.floor(Math.random() * options.length);
-            var moves = JSON.parse(options[index]);
+            var movesJSON = JSON.parse(options[index]);
+            var moves = [];
+            for (var i = 0; i < movesJSON.length; i++) {
+                moves.push(new Board.TilePlacement(
+                                new Board.Coordinates(movesJSON[i].coords.x, movesJSON[i].coords.y), 
+                                movesJSON[i].tile)
+                            );
+            };
+
             return ["play", moves];
 
         } else {
