@@ -295,8 +295,11 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
         return line.length;
     }
     state.gameOver = function() {
-        var playerTileCount = this.turnHistory.length ? this.getCurrentPlayer().turnTiles().length : this.players[this.turn() - 1 % this.players.length].tiles.length;
-        return this.bag.length + playerTileCount === 0;
+        // game can't be over if there are still tiles in the bag
+        if (this.bag.length) return false;
+
+        // is there any player without tiles left?
+        return this.players.filter(function(player) { return !player.tiles.length; }).length;
     }
     state.scoreTurn = function(moveLines) {
         var outer = this;
@@ -319,8 +322,11 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
     }
 
     state.resetTurn = function () {
+        var player = this.getCurrentPlayer();
 
-        this.turnHistory = [];
+        while (this.turnHistory.length) {
+            player.tiles.push(this.turnHistory.pop().tile);
+        }
     }
 
     state.determineWinner = function() {
@@ -343,9 +349,6 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
 
         var player = this.getCurrentPlayer();
 
-        var row;
-        var col;
-        var tile;
         var turnScore = this.scoreTurn();
         player.score += turnScore;
         player.drawTiles(state, this.turnHistory.length);
@@ -355,7 +358,6 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
             turnPush.push(move);
 
             this.playableCache = this.getPlayableOnMove(move.coords);
-            player.removeTile(move.tile);
         }
 
 
@@ -409,15 +411,16 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
             var row, col, tile;
             var playables = outer.playable();
             for (var i = 0; i < playables.length; i++) {
-                // row = Number(playables[i][0]);
-                // col = Number(playables[i][1]);
 
                 for (var j = rack.length - 1; j >= 0; j--) {
 
                     tile = rack[j];
                     if (outer.tilePlace(playables[i], tile)) {
                         recurse_optimize_score(rack.slice(0,j).concat(rack.slice(j + 1)), avoid_twerqle_bait);
-                        if (killswitch) return;
+                        if (killswitch) {
+                            outer.turnHistory = [];
+                            return;
+                        }
                     }
                 };
             };
@@ -432,75 +435,6 @@ exports.initState = function(playerNames, playerTypes, numTypes, numCopies) {
                 if (score > numTypes * 2 + 1) killswitch = true;
             }
         }
-
-        // function recurse_avoid_qwerlebait(string, lastMove) {
-        //     var rack, tile, row, col, lines, newLastMove;
-        //     for (var i = 0; i < outer.turnPlayable.length; i++) {
-        //         // if (string || playableRange.indexOf(i) !== -1) {
-        //             var rack = outer.getCurrentPlayer().tiles;
-        //             for (var j = rack.length - 1; j >= 0; j--) {
-        //                 var tile = outer.getCurrentPlayer().tiles[j];
-        //                 var row = Number(outer.turnPlayable[i][0]);
-        //                 var col = Number(outer.turnPlayable[i][1]);
-        //                 if (Math.random() < type * ( 0.5 * ( 1 / outer.turnHistory.length + 1 ) )) {
-        //                     if (outer.placeTile(tile, row, col)) {
-        //                         var newLastMove = 't' + tile + 'r' + row + 'c' + col;
-        //                         recurse_avoid_qwerlebait(string + newLastMove, newLastMove);
-        //                     }
-        //                 }
-        //             };
-        //         // }
-        //     };
-        //     if (string) {
-        //         var lines = [];
-        //         var colLine, rowLine, skip;
-        //         var lastMove = lastMove.split(/[trc]/);
-        //         var row = Number(lastMove[2]);
-        //         var col = Number(lastMove[3]);
-        //         var skip = false;
-
-
-        //         if (outer.turnOrientation === 0) {
-        //             rowLine = outer.getRowLine(row, col);
-        //             if (rowLine.length === outer.numTypes - 1)
-        //                 lines = lines.concat(outer.getRowLine(row, col, true));
-        //             colLine = outer.getColLine(row, col);
-        //             if (colLine.length === outer.numTypes - 1)
-        //                 lines = lines.concat(outer.getColLine(row, col, true));
-        //         } else if (outer.turnOrientation === 1) {
-        //             rowLine = outer.getRowLine(row, col);
-        //             if (rowLine.length === outer.numTypes - 1) 
-        //                 lines = lines.concat(outer.getRowLine(row, col, true));
-        //             for (var i = 0; i < outer.turnHistory.length; i++) {
-        //                 colLine = outer.getColLine(     outer.turnHistory[i][0],
-        //                                                 outer.turnHistory[i][1]
-        //                                             );
-        //                 if (colLine.length === outer.numTypes - 1) 
-        //                     lines = lines.concat(   outer.getColLine(outer.turnHistory[i][0],
-        //                                             outer.turnHistory[i][1], true)
-        //                                         );
-        //             };
-        //         } else if (outer.turnOrientation === 2) {
-        //             colLine = outer.getColLine(row, col);
-        //             if (colLine.length === outer.numTypes - 1) lines = lines.concat(outer.getColLine(row, col, true));
-        //             for (var i = 0; i < outer.turnHistory.length; i++) {
-        //                 rowLine = outer.getRowLine(outer.turnHistory[i][0], outer.turnHistory[i][1]);
-        //                 if (rowLine.length === outer.numTypes - 1) lines = lines.concat(outer.getRowLine(outer.turnHistory[i][0], outer.turnHistory[i][1], true));
-        //             };
-        //         }
-        //         for (var i = 0; i < lines.length; i++) {
-        //             if (outer.coordsPlayable(lines[i][0], lines[i][1])) skip = true;
-        //         };
-        //         // if (!skip) {
-        //             scores[string] = outer.scoreTurn() - (Math.floor(outer.numTypes/2) * Number(skip));
-        //         // }
-        //         outer.rewindState(Number(lastMove[1]), Number(lastMove[2]), Number(lastMove[3]));
-        //         // ui.getCellByRowCol(lastMove[2], lastMove[3]).html("");
-        //     }
-        //     // string = string.slice(0, string.lastIndexOf('t'));
-        // }
-
-
 
         for (var i = lines.length - 1; i >= 0; i--) {
             recurse_optimize_score(lines[i], avoid_twerqle_bait);

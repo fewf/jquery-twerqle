@@ -1,0 +1,32 @@
+{
+  "name": "Twerqle",
+  "version": "0.0.1",
+  "description": "Adaptation of the board game Qwirkle",
+  "main": "bundle.js",
+  "scripts": {
+    "start": "beefy index.js:bundle.js --live",
+    "bundle": "browserify index.js -o bundle.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/fewf/twerqle.git"
+  },
+  "keywords": [
+    "game",
+    "board",
+    "qwirkle"
+  ],
+  "author": "Greg Altman",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/fewf/twerqle/issues"
+  },
+  "homepage": "https://github.com/fewf/twerqle",
+  "dependencies": {
+    "jquery": "~2.1.1",
+    "backbone": "~1.1.2"
+  },
+  "devDependencies": {
+    "beefy": "~1.1.0"
+  }
+}

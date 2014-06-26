@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>twerqle</title>
+        <style type="text/css">
+            p {
+                font-family: monospace;
+                line-height: 1em;
+                margin: 0;
+            }
+            #container {
+                min-width: 100px;
+                min-height: 100px;
+                border: 1px solid black;
+            }
+            #players, #players ul {
+                list-style-type: none;
+            }
+            #players li {
+                font-family: monospace;
+                line-height: 1em;              
+            }
+            .player-rack li {
+                display: inline-block;
+                height: 75px;
+                width: 75px;
+                margin: 1em;
+            }
+
+            svg {
+                height: 100%;
+                width: 100%;
+                display: inline;
+                background-color: black;
+            }
+            svg.c0 g{
+              fill: #FF8080; }
+
+            svg.c1 g{
+              fill: #FFBF80; }
+
+            svg.c2 g{
+              fill: #FFFF80; }
+
+            svg.c3 g{
+              fill: #BFFF80; }
+
+            svg.c4 g{
+              fill: #80FF80; }
+
+            svg.c5 g{
+              fill: #80FFBF; }
+
+            svg.c6 g{
+              fill: #80FFFF; }
+
+            svg.c7 g{
+              fill: #80BFFF; }
+
+            svg.c8 g{
+              fill: #8080FF; }
+
+            svg.c9 g{
+              fill: #BF80FF; }
+
+            svg.c10 g {
+              fill: #FF80FF; }
+
+            svg.c11 g {
+              fill: #FF80BF; }            
+        </style>        
+    </head>
+    <body>
+    <div id="container">
+        
+
+    </div>
+
+
+  <!-- Templates -->
+    <script type="text/template" id="cell-template">
+        
+    </script>
+
+    <script type="text/template" id="tile-template">
+        <g display="inline">
+        <%
+            switch (shape) {
+                case 0:
+        %>
+
+            // circle
+            <ellipse ry="40.25" rx="40.25" id="svg_9" cy="50" cx="50" stroke-linecap="null" stroke-linejoin="null" stroke-width="0" stroke="#000000" />
+        <%      
+                break;
+                case 1: 
+        %>
+            // square
+            <rect id="svg_10" height="70" width="70" y="15" x="15" stroke-linecap="null" stroke-linejoin="null" stroke-width="0" stroke="#000000" />
+        <%      
+                break;
+                case 2: 
+        %>
+            // star
+            <path id="svg_13" d="m5.332226,39.709019l34.262939,0l10.587547,-32.54955l10.58757,32.54955l34.262936,0l-27.719254,20.116863l10.588051,32.549667l-27.719303,-20.117172l-27.71929,20.117172l10.588079,-32.549667l-27.719276,-20.116863z" stroke-linecap="null" stroke-linejoin="null" stroke-width="0" stroke="#000000" />
+        <%      
+                break;
+                case 3: 
+        %>
+            // triangle
+            <path id="svg_15" d="m9.612973,85.76432l40.448535,-70.78496l40.448471,70.78496z" stroke-linecap="null" stroke-linejoin="null" stroke-width="0" stroke="#000000" />
+        <%      
+                break;
+                case 4: 
+        %>
+            // diamond
+            <path id="svg_17" d="m8.21011,49.927746l41.97266,-42.358792l41.972519,42.358792l-41.972519,42.358807l-41.97266,-42.358807z" stroke-linecap="null" stroke-linejoin="null" stroke-width="0" stroke="#000000" />
+        <%      
+                break;
+                case 5: 
+        %>
+            // plus
+            <path id="svg_19" d="m5.128747,34.663597l29.700153,0l0,-29.700133l30.466831,0l0,29.700133l29.700127,0l0,30.466858l-29.700127,0l0,29.700119l-30.466831,0l0,-29.700119l-29.700153,0l0,-30.466858z" stroke-linecap="null" stroke-linejoin="null" stroke-width="0" stroke="#000000" />
+        <%
+                break;
+            }
+        %>
+        </g>
+
+
+    </script>
+
+    <script type="text/template" id="app-template">
+        <div id="app-view">
+            <p>TWERQLE</p>
+            
+        </div>
+    </script>
+
+    <script type="text/template" id="pre-game-template">
+
+            <p>i am pre-game-view</p>
+            <label for="compNum">bots:</label><input id="compNum" name="compNum" type="number" min="1" max="3">
+            <label for="typeNum">types:</label><input id="typeNum" name="typeNum" type="number" min="1" max="12">
+            <button id="start">start game!</button>
+
+    </script>
+
+
+    <script type="text/template" id="player-template">
+        <div class="player-view">
+
+            <span><%- name %></span>
+            <span><%- score %></span>
+            <ul class="player-rack">
+
+            </ul>
+        </div>
+    </script>
+
+    <script type="text/template" id="game-template">
+
+            <div id="board">
+            </div>
+
+            <button id="play">play</button>
+            <ul id="players"></ul>
+
+    </script>     
+
+
+    <script type="text/javascript" src="bundle.js"></script>
+
+    </body>
+
+</html>

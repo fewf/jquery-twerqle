@@ -17,12 +17,12 @@ Coordinates.prototype.neighbor = function(dir) {
     return new Coordinates(newX, newY); 
 }
 Coordinates.prototype.neighbors = function() {
-    return {
-            up: this.neighbor('up'),
-            right: this.neighbor('right'),
-            down: this.neighbor('down'),
-            left: this.neighbor('left')
-           }
+    return [
+            this.neighbor('up'),
+            this.neighbor('right'),
+            this.neighbor('down'),
+            this.neighbor('left')
+           ]
 }
 
 Coordinates.prototype.equals = function(coords) {
@@ -319,13 +319,13 @@ var Board = function(state) {
     // called only be updatePlayable
     this.getPlayableNeighbors = function(coords, tps) {
         if (typeof tps == 'undefined') tps = state.tilePlacements();
-
         var playableNeighbors = [];
         var unplayableNeighbors = [];
-        // debugger;
+
+
         var lines = this.linesAt(coords, tps);
 
-        var neighbors = lines.colBounds.concat(lines.rowBounds);
+        var neighbors = coords.neighbors();
 
         for (var i = neighbors.length - 1; i >= 0; i--) {
             if (this.coordsPlayable(neighbors[i])) {

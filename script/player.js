@@ -17,17 +17,17 @@ var Player = function(name, type, state) {
     this.tiles = [];
     this.selectedTiles = [];
 
-    this.turnTiles = function() {
-        if (!this.isActive(state) || !state.turnHistory.length) return this.tiles.slice(0);
+    // this.turnTiles = function() {
+    //     if (!this.isActive(state) || !state.turnHistory.length) return this.tiles.slice(0);
 
-        var rackCopy = this.tiles.slice(0);
-        var tile;
-        for (var i = 0; i < state.turnHistory.length; i++) {
-            tile = state.turnHistory[i][2];
-            rackCopy.splice(rackCopy.indexOf(tile), 1);
-        };
-        return rackCopy;
-    }
+    //     var rackCopy = this.tiles.slice(0);
+    //     var tile;
+    //     for (var i = 0; i < state.turnHistory.length; i++) {
+    //         tile = state.turnHistory[i][2];
+    //         rackCopy.splice(rackCopy.indexOf(tile), 1);
+    //     };
+    //     return rackCopy;
+    // }
 }
 
 // state changing functions
@@ -42,6 +42,8 @@ Player.prototype.endTurn = function(state) {
         this.exchangeTiles( state, this.selectedTiles );
         state.endExchangeTurn(this.selectedTiles);
         this.selectedTiles = [];
+    } else {
+        return false;
     }
     return true;
 }
@@ -50,7 +52,7 @@ Player.prototype.deselectTile = function( tile ) {
     var index = this.selectedTiles.indexOf(tile);
     if ( index === -1 ) throw 'tried to deselect tile not in selection';
 
-    return this.selectedTiles.splice(index, 1);
+    return this.selectedTiles.splice(index, 1)[0];
 }
 
 Player.prototype.selectTile = function( state, tile ) {
@@ -66,17 +68,19 @@ Player.prototype.selectTile = function( state, tile ) {
     return this;
 }
 
-Player.prototype.placeSelectedTile = function( state, row, col ) {
-    if ( !this.isActive(state) || this.selectedTiles.length > 1 ) return false;
-
-    return state.tilePlace(row, col, this.selectedTiles.pop());
+Player.prototype.placeSelectedTile = function( state, coords ) {
+    if ( !this.isActive(state) || this.selectedTiles.length !== 1 ) return false;
+    var tile = this.selectedTiles.pop();
+    ret = state.tilePlace(coords, tile);
+    if (ret) this.removeTile(tile);
+    return ret;
 }
 Player.prototype.hasTile = function(tile) {
-    return this.turnTiles().indexOf(Number(tile)) !== -1;
+    return this.tiles.indexOf(Number(tile)) !== -1;
 }
 
 Player.prototype.hasTiles = function(tiles) {
-        var rack = this.turnTiles();
+    var rack = this.tiles.slice();
     for (var i = tiles.length - 1; i >= 0; i--) {
         if (rack.indexOf(tiles[i]) === -1) {
             return false;
@@ -84,7 +88,7 @@ Player.prototype.hasTiles = function(tiles) {
         rack.splice(rack.indexOf(tiles[i]), 1);
     };
 
-        return true;
+    return true;
 }
 
 Player.prototype.isActive = function(state) {
@@ -109,8 +113,8 @@ Player.prototype.exchangeTiles = function(state, selectedTiles) {
     if ( state.turnHistory.length ||
          !this.hasTiles(selectedTiles, state) ||
          state.bag.length < selectedTiles.length) return false;
-
     if ( !this.drawTiles(state, selectedTiles.length) ) throw 'draw tiles failed';
+
     if ( !this.returnTiles(state, selectedTiles) ) throw 'return tiles failed';
     
     return true;
@@ -128,12 +132,11 @@ Player.prototype.returnTiles = function(state, selectedTiles) {
 }
 
 Player.prototype.removeTile = function(tile) {
-    if (this.tiles.indexOf(tile) === -1) {
-        debugger;
+    if (!this.hasTile(tile)) {
         throw new Error('hasnt tile').stack;
     }
 
-    return this.tiles.splice(this.tiles.indexOf(tile), 1);
+    return this.tiles.splice(this.tiles.indexOf(tile), 1)[0];
 }
 
 Player.prototype.getAllLinesInRack = function(state) {
@@ -180,7 +183,10 @@ Player.prototype.getLongestLine = function(state) {
     return lines[linesLengths.indexOf(maxLine)];
 }
 
-
+Player.prototype.sortTilesBy = function(sorter, state) {
+    var getSorter = sorter == 'shape' ? state.getShape : state.getColor;
+    return _.sortBy(this.tiles, getSorter, state);
+}
 
 
 exports.Player = Player;
