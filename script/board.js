@@ -47,7 +47,6 @@ var TilePlacement = function(coords, tile) {
 TilePlacement.prototype.row = function() {
     return this.coords.row();
 }
->>>>>>> coords-and-tps-to-objects
 
 TilePlacement.prototype.column = function() {
     return this.coords.column();
