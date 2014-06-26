@@ -6,28 +6,7 @@ var Coordinates = function(x, y) {
     this.y = y;
 }
 
-<<<<<<< HEAD
-// var TilePlacement = function(row, column, tile) {
-//     this.row = row;
-//     this.column = column;
-//     this.tile = tile;
-// }
 
-// var LineTilePlacements = function(tps, colElseRow, lineIndex) {
-//     this.orientation: colElseRow ? 'column' : 'row';
-//     this.index = lineIndex;
-//     this.lineTilePlacements = tps.map(function(tp) { 
-//         return [tp[Number(colElseRow)], tp[2]];
-//     });
-// }
-
-// LineTilePlacements.prototype.toTilePlacements = function() {
-    
-//     return this.map(function(ltps) {
-
-//     })
-// }
-=======
 Coordinates.prototype.row = function() { return this.y; }
 Coordinates.prototype.column = function() { return this.x; }
 Coordinates.prototype.neighbor = function(dir) {
@@ -150,17 +129,11 @@ var Board = function(state) {
 
     this.row = function(rowNum, tps) {
         if (typeof tps == 'undefined') tps = state.tilePlacements();
-<<<<<<< HEAD
-        
-        return tps.filter(function(tp) {
-            return tp[_row] === rowNum;
-        })
-=======
+
 
         return tps.filter(function(tp) {
             return tp.row() === rowNum;
         });
->>>>>>> coords-and-tps-to-objects
     }
 
     this.column = function(colNum, tps) {
@@ -374,17 +347,10 @@ var Board = function(state) {
 
         if (typeof tps == 'undefined') tps = state.tilePlacements();
 
-<<<<<<< HEAD
-        var tp = _.find(tps, function(tp) {
-                    return tp[_row] === row && tp[_column] === col;
-                });
-
-        return tp ? tp[2] : undefined;
-=======
         var tp = _.find(tps, function(tp) { return coords.equals(tp.coords); });
 
         return tp ? tp.tile : tp;
->>>>>>> coords-and-tps-to-objects
+
     }
 
 
